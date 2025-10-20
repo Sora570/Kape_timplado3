@@ -1,0 +1,947 @@
+/* Cashier-specific styles that extend the main Dashboard.css */
+
+/* Import Fredoka font */
+@import url('https://fonts.googleapis.com/css2?family=Fredoka:wght@300;400;500;600;700&display=swap');
+
+/* Cashier Mode Overrides */
+.cashier-mode {
+    background: #f5f5f5;
+    font-family: 'Fredoka', sans-serif;
+    position: relative;
+    margin: 0;
+    padding: 0;
+}
+
+/* Clean white background with subtle pattern */
+.cashier-mode::before {
+    content: '';
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(
+        135deg,
+        #ffffff 0%,
+        #f8f9fa 25%,
+        #ffffff 50%,
+        #f1f3f4 75%,
+        #ffffff 100%
+    );
+    z-index: -2;
+}
+
+/* Subtle overlay for depth */
+.cashier-mode::after {
+    content: '';
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(
+        135deg,
+        rgba(255, 255, 255, 0.8) 0%,
+        rgba(248, 249, 250, 0.6) 25%,
+        rgba(255, 255, 255, 0.9) 50%,
+        rgba(241, 243, 244, 0.7) 75%,
+        rgba(255, 255, 255, 0.8) 100%
+    );
+    z-index: -1;
+}
+
+/* POS Layout Styling */
+.pos-layout {
+    display: flex;
+    height: calc(100vh - 80px);
+    gap: 20px;
+    padding: 20px;
+    background: transparent;
+}
+
+.menu-section {
+    flex: 2;
+    background: #ffffff;
+    border-radius: 15px;
+    padding: 20px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+    overflow-y: auto;
+}
+
+.cart-section {
+    flex: 1;
+    background: #2c3e50;
+    border-radius: 15px;
+    padding: 20px;
+    color: white;
+    display: flex;
+    flex-direction: column;
+    min-width: 350px;
+}
+
+.menu-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    gap: 15px;
+}
+
+.search-container {
+    flex: 1;
+}
+
+.search-input {
+    width: 100%;
+    padding: 12px 15px;
+    border: 2px solid #e0e0e0;
+    border-radius: 10px;
+    font-family: 'Fredoka', sans-serif;
+    font-size: 16px;
+    transition: border-color 0.3s ease;
+}
+
+.search-input:focus {
+    outline: none;
+    border-color: #8b4513;
+}
+
+.filter-container {
+    min-width: 150px;
+}
+
+.category-filter {
+    width: 100%;
+    padding: 12px 15px;
+    border: 2px solid #e0e0e0;
+    border-radius: 10px;
+    font-family: 'Fredoka', sans-serif;
+    font-size: 16px;
+    background: white;
+    cursor: pointer;
+}
+
+.products-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 20px;
+    max-height: calc(100vh - 200px);
+    overflow-y: auto;
+}
+
+.product-card {
+    background: white;
+    border-radius: 15px;
+    padding: 15px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+    border: 1px solid #e0e0e0;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    cursor: pointer;
+    text-align: center;
+}
+
+.product-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+}
+
+.product-image {
+    width: 100%;
+    height: 120px;
+    background: #f8f9fa;
+    border-radius: 10px;
+    margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #666;
+    font-size: 14px;
+    overflow: hidden;
+}
+
+.product-image img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 10px;
+}
+
+.product-name {
+    font-weight: 600;
+    font-size: 16px;
+    color: #2c3e50;
+    margin-bottom: 5px;
+}
+
+.product-category {
+    font-size: 12px;
+    color: #8b4513;
+    margin-bottom: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.add-to-cart-btn {
+    width: 100%;
+    padding: 10px;
+    background: #8b4513;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-family: 'Fredoka', sans-serif;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background 0.3s ease;
+}
+
+.add-to-cart-btn:hover {
+    background: #6b3410;
+}
+
+/* Cart Section Styling */
+.cart-header h3 {
+    margin: 0 0 20px 0;
+    font-size: 24px;
+    font-weight: 600;
+    color: white;
+}
+
+.cart-items {
+    flex: 1;
+    overflow-y: auto;
+    margin-bottom: 20px;
+}
+
+.cart-item {
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 10px;
+    padding: 15px;
+    margin-bottom: 15px;
+    border-left: 4px solid #e74c3c;
+}
+
+.cart-item-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+}
+
+.cart-item-name {
+    font-weight: 600;
+    font-size: 16px;
+    color: white;
+}
+
+.cart-item-size {
+    font-size: 14px;
+    color: #bdc3c7;
+}
+
+.cart-item-addons {
+    margin: 10px 0;
+}
+
+.addon-item {
+    font-size: 14px;
+    color: #ecf0f1;
+    margin: 5px 0;
+}
+
+.cart-item-controls {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-top: 10px;
+}
+
+.quantity-controls {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.quantity-btn {
+    width: 30px;
+    height: 30px;
+    border: none;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.2);
+    color: white;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+}
+
+.quantity-btn:hover {
+    background: rgba(255, 255, 255, 0.3);
+}
+
+.quantity-display {
+    font-weight: 600;
+    color: white;
+    min-width: 30px;
+    text-align: center;
+}
+
+.cart-item-total {
+    font-weight: 600;
+    color: white;
+    font-size: 16px;
+}
+
+.remove-item {
+    background: #e74c3c;
+    border: none;
+    color: white;
+    padding: 5px 10px;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 12px;
+}
+
+.remove-item:hover {
+    background: #c0392b;
+}
+
+.cart-summary {
+    border-top: 1px solid rgba(255, 255, 255, 0.2);
+    padding-top: 20px;
+}
+
+.cart-total {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    font-size: 20px;
+    font-weight: 600;
+    color: white;
+}
+
+.checkout-btn {
+    width: 100%;
+    padding: 15px;
+    background: #27ae60;
+    color: white;
+    border: none;
+    border-radius: 10px;
+    font-family: 'Fredoka', sans-serif;
+    font-size: 18px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.3s ease;
+}
+
+.checkout-btn:hover {
+    background: #229954;
+}
+
+.checkout-btn:disabled {
+    background: #7f8c8d;
+    cursor: not-allowed;
+}
+
+/* Apply Fredoka font to all elements in cashier mode */
+.cashier-mode * {
+    font-family: 'Fredoka', sans-serif !important;
+}
+
+/* Center alignment for cashier content */
+.cashier-mode .main {
+    text-align: center;
+}
+
+.cashier-mode .products-root,
+.cashier-mode .orders-root,
+.cashier-mode .closeout-root {
+    text-align: center;
+}
+
+/* Apply Fredoka font to all cashier elements */
+.cashier-mode h1,
+.cashier-mode h2,
+.cashier-mode h3,
+.cashier-mode p,
+.cashier-mode span,
+.cashier-mode div,
+.cashier-mode button,
+.cashier-mode input,
+.cashier-mode select,
+.cashier-mode label,
+.cashier-mode .btn-primary,
+.cashier-mode .btn-secondary,
+.cashier-mode .search-input,
+.cashier-mode .filter-select,
+.cashier-mode .products-title,
+.cashier-mode .products-subtitle,
+.cashier-mode .orders-title,
+.cashier-mode .orders-subtitle,
+.cashier-mode .navigation,
+.cashier-mode .navigation *,
+.cashier-mode .main,
+.cashier-mode .main * {
+    font-family: 'Fredoka', sans-serif !important;
+}
+
+/* Ensure consistent button styling */
+.cashier-mode .btn-primary {
+    font-family: 'Fredoka', sans-serif !important;
+    font-weight: 500;
+    border-radius: 12px;
+    padding: 12px 20px;
+    transition: all 0.3s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.cashier-mode .btn-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+}
+
+/* Center align all text elements */
+.cashier-mode .products-header,
+.cashier-mode .orders-header,
+.cashier-mode .closeout-header {
+    text-align: center;
+}
+
+/* Products actions removed for cashier - admin only functionality */
+
+.cashier-mode .products-filters {
+    display: flex;
+    justify-content: center;
+    gap: 15px;
+    flex-wrap: wrap;
+    margin-bottom: 20px;
+}
+
+.cashier-mode .navigation {
+    position: fixed;
+    width: 250px;
+    height: 100%;
+    background: var(--brown2);
+    border-left: 10px solid var(--brown2);
+    transition: 0.5s;
+    overflow: hidden;
+    z-index: 1000;
+    font-family: 'Fredoka', sans-serif !important;
+}
+
+.cashier-mode .navigation .logo {
+    font-family: 'Fredoka', sans-serif !important;
+    font-weight: 600;
+    font-size: 1.2rem;
+}
+
+.cashier-mode .navigation .title {
+    font-family: 'Fredoka', sans-serif !important;
+    font-weight: 500;
+}
+
+.cashier-mode .navigation .icon {
+    font-size: 1.1rem;
+}
+
+.cashier-mode .navigation.active {
+    width: 80px;
+}
+
+.cashier-mode .navigation ul {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+}
+
+.cashier-mode .navigation ul li {
+    position: relative;
+    width: 100%;
+    list-style: none;
+    border-top-left-radius: 30px;
+    border-bottom-left-radius: 30px;
+}
+
+.cashier-mode .navigation ul li:hover,
+.cashier-mode .navigation ul li.hovered {
+    background: var(--white);
+}
+
+.cashier-mode .navigation ul li:nth-child(1) {
+    margin-bottom: 40px;
+    pointer-events: none;
+}
+
+.cashier-mode .navigation ul li a {
+    position: relative;
+    display: block;
+    width: 100%;
+    display: flex;
+    text-decoration: none;
+    color: var(--Darkbrown);
+}
+
+.cashier-mode .navigation ul li:hover a,
+.cashier-mode .navigation ul li.hovered a {
+    color: var(--Darkbrown);
+    font-size: larger;
+    font-weight: bolder;
+}
+
+.cashier-mode .navigation ul li a .icon {
+    position: relative;
+    display: block;
+    min-width: 60px;
+    height: 60px;
+    line-height: 70px;
+    text-align: center;
+}
+
+.cashier-mode .navigation ul li a .icon ion-icon {
+    font-size: 1.75em;
+}
+
+.cashier-mode .navigation ul li a .title {
+    position: relative;
+    display: block;
+    padding: 0 10px;
+    height: 60px;
+    line-height: 60px;
+    text-align: start;
+    white-space: nowrap;
+}
+
+/* Cashier Main Content */
+.cashier-mode .main {
+    position: absolute;
+    width: calc(100% - 250px);
+    left: 250px;
+    min-height: 100vh;
+    background: var(--brown1);
+    transition: 0.5s;
+}
+
+.cashier-mode .navigation.active ~ .main {
+    width: calc(100% - 80px);
+    left: 80px;
+}
+
+/* Products Grid for Cashier */
+.products-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 25px;
+    padding: 20px;
+    justify-items: center;
+}
+
+.product-card {
+    background: var(--white);
+    border-radius: 20px;
+    box-shadow: 0 6px 25px rgba(0, 0, 0, 0.1);
+    overflow: hidden;
+    transition: all 0.3s ease;
+    width: 100%;
+    max-width: 300px;
+    position: relative;
+    cursor: pointer;
+}
+
+.product-card:hover {
+    transform: translateY(-8px) scale(1.02);
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.2);
+}
+
+.product-image {
+    width: 100%;
+    height: 220px;
+    overflow: hidden;
+    position: relative;
+    background: linear-gradient(135deg, var(--brown1), var(--brown2));
+}
+
+.product-image img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 0.3s ease;
+}
+
+.product-card:hover .product-image img {
+    transform: scale(1.1);
+}
+
+.product-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.7);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.product-card:hover .product-overlay {
+    opacity: 1;
+}
+
+.add-to-cart-btn {
+    background: var(--Darkbrown);
+    color: var(--white);
+    border: none;
+    padding: 12px 20px;
+    border-radius: 25px;
+    font-family: 'Fredoka', sans-serif;
+    font-weight: 600;
+    font-size: 14px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    transition: all 0.3s ease;
+}
+
+.add-to-cart-btn:hover {
+    background: #6d4329;
+    transform: scale(1.05);
+}
+
+.product-info {
+    padding: 20px;
+    text-align: center;
+}
+
+.product-name {
+    color: var(--Darkbrown);
+    font-size: 1.3rem;
+    margin-bottom: 8px;
+    font-weight: 600;
+    font-family: 'Fredoka', sans-serif;
+}
+
+.product-category {
+    color: var(--Lightbrown);
+    font-size: 0.9rem;
+    margin-bottom: 15px;
+    font-family: 'Fredoka', sans-serif;
+    font-weight: 400;
+}
+
+.product-sizes {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    justify-content: center;
+    margin-bottom: 15px;
+}
+
+.size-btn {
+    background: var(--brown2);
+    color: var(--Darkbrown);
+    border: 2px solid var(--brown2);
+    padding: 8px 12px;
+    border-radius: 20px;
+    cursor: pointer;
+    font-weight: 500;
+    font-family: 'Fredoka', sans-serif;
+    font-size: 12px;
+    transition: all 0.3s ease;
+    min-width: 80px;
+}
+
+.size-btn:hover {
+    background: var(--Darkbrown);
+    color: var(--white);
+    border-color: var(--Darkbrown);
+    transform: scale(1.05);
+}
+
+.size-btn:active {
+    transform: scale(0.95);
+}
+
+/* Order Summary */
+.order-summary {
+    background: var(--white);
+    border-radius: 15px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+    padding: 30px;
+    margin: 20px;
+}
+
+.order-items {
+    max-height: 300px;
+    overflow-y: auto;
+    margin-bottom: 20px;
+}
+
+.order-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 0;
+    border-bottom: 1px solid var(--brown3);
+}
+
+.order-total {
+    font-size: 1.2rem;
+    color: var(--Darkbrown);
+    text-align: right;
+    padding-top: 15px;
+    border-top: 2px solid var(--brown2);
+}
+
+.order-actions {
+    display: flex;
+    gap: 15px;
+    margin-top: 20px;
+}
+
+/* Close-Out Styles */
+.closeout-summary {
+    background: var(--white);
+    border-radius: 15px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+    padding: 30px;
+    margin: 20px;
+}
+
+.summary-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 20px;
+}
+
+.summary-card {
+    background: var(--brown2);
+    padding: 20px;
+    border-radius: 10px;
+    text-align: center;
+    border-left: 4px solid var(--Darkbrown);
+}
+
+.summary-label {
+    color: var(--Lightbrown);
+    font-size: 0.9rem;
+    margin-bottom: 5px;
+}
+
+.summary-value {
+    color: var(--Darkbrown);
+    font-size: 1.5rem;
+    font-weight: bold;
+}
+
+.cash-reconciliation {
+    background: var(--white);
+    border-radius: 15px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+    padding: 30px;
+    margin: 20px;
+}
+
+.reconciliation-form {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+    margin-bottom: 20px;
+}
+
+.form-group {
+    display: flex;
+    flex-direction: column;
+}
+
+.form-label {
+    color: var(--Darkbrown);
+    margin-bottom: 8px;
+    font-weight: 500;
+}
+
+.form-input {
+    padding: 12px;
+    border: 2px solid var(--brown3);
+    border-radius: 8px;
+    font-size: 16px;
+    transition: border-color 0.3s ease;
+    background: var(--white);
+}
+
+.form-input:focus {
+    outline: none;
+    border-color: var(--Darkbrown);
+}
+
+.reconciliation-summary {
+    background: var(--brown2);
+    padding: 20px;
+    border-radius: 10px;
+    margin-top: 20px;
+}
+
+.reconciliation-row {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 10px;
+    padding: 8px 0;
+    border-bottom: 1px solid var(--brown3);
+}
+
+.reconciliation-row:last-child {
+    border-bottom: none;
+    font-weight: bold;
+    font-size: 1.1rem;
+    color: var(--Darkbrown);
+}
+
+.reconciliation-label {
+    color: var(--Darkbrown);
+}
+
+.reconciliation-value {
+    color: var(--Darkbrown);
+    font-weight: 500;
+}
+
+.over-short {
+    color: #dc3545;
+}
+
+.over-short.positive {
+    color: #28a745;
+}
+
+.closeout-actions {
+    display: flex;
+    gap: 15px;
+    justify-content: center;
+    margin: 30px 20px;
+}
+
+.btn-closeout {
+    background: var(--Darkbrown);
+    color: var(--white);
+    border: none;
+    padding: 15px 30px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: 500;
+    font-size: 1.1rem;
+    transition: background 0.3s ease;
+}
+
+.btn-closeout:hover {
+    background: #6d4329;
+}
+
+.btn-closeout:disabled {
+    background: #6c757d;
+    cursor: not-allowed;
+}
+
+.closeout-report {
+    background: var(--white);
+    border-radius: 15px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+    padding: 30px;
+    margin: 20px;
+}
+
+.report-title {
+    color: var(--Darkbrown);
+    margin-bottom: 20px;
+    font-size: 1.3rem;
+}
+
+.report-content {
+    background: var(--brown2);
+    padding: 20px;
+    border-radius: 10px;
+    font-family: 'Courier New', monospace;
+    font-size: 0.9rem;
+    line-height: 1.6;
+    white-space: pre-line;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .cashier-mode .main {
+        width: 100%;
+        left: 0;
+    }
+    
+    .cashier-mode .navigation {
+        width: 80px;
+    }
+    
+    .products-grid {
+        grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+        gap: 15px;
+        padding: 15px;
+    }
+    
+    .reconciliation-form {
+        grid-template-columns: 1fr;
+    }
+    
+    .summary-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .closeout-actions {
+        flex-direction: column;
+        align-items: center;
+    }
+}
+
+/* Loading States */
+.loading {
+    opacity: 0.6;
+    pointer-events: none;
+}
+
+.loading::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 20px;
+    height: 20px;
+    margin: -10px 0 0 -10px;
+    border: 2px solid var(--Darkbrown);
+    border-top: 2px solid transparent;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* Success/Error States */
+.success-message {
+    background: #d4edda;
+    color: #155724;
+    padding: 15px;
+    border-radius: 8px;
+    margin-bottom: 20px;
+    border: 1px solid #c3e6cb;
+}
+
+.error-message {
+    background: #f8d7da;
+    color: #721c24;
+    padding: 15px;
+    border-radius: 8px;
+    margin-bottom: 20px;
+    border: 1px solid #f5c6cb;
+}
