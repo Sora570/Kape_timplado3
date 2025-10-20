@@ -665,6 +665,7 @@ if (!isset($_SESSION['username']) || !in_array($_SESSION['role'], ['admin', 'cas
                     <div class="settings-header">
                         <h2 class="page-title">⚙️ Settings <span class="page-subtitle">System Control & Management</span></h2>
                     </div>
+
             
                         <!-- Audit Navigation Section -->
                         <div class="audit-navigation-section">

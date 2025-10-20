@@ -1,0 +1,1642 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Kape Timplado — POS (Products fade + Daily Sales)</title>
+
+<!-- jsPDF CDN -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
+<style>
+  :root{
+    --nav-width: 220px;
+    --sidebar-width: 320px; /* sidebar column width (kept reserved to avoid layout shifts) */
+    --sidebar-collapsed-width: 120px;
+    --cart-width: 360px;
+    --bg: #f7f4f2;
+    --panel: #ffffff;
+    --muted: #6f625a;
+    --accent: #d7b78f;
+    --accent-2: #f3e6d9;
+    --primary: #6d4b3e;
+    --success: #2d8a5f;
+    --danger: #c53333;
+    --shadow: 0 8px 28px rgba(27,20,16,0.06);
+    --radius: 12px;
+    font-family: "Poppins", Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+  }
+  html,body{height:100%;margin:0;background:linear-gradient(180deg,#fbf7f3 0%, #fffaf6 100%);color:#2a2220;}
+  *{box-sizing:border-box}
+  a{color:inherit;text-decoration:none}
+
+  /* Header */
+  header {
+    display:flex;align-items:center;justify-content:space-between;padding:12px 16px;background:linear-gradient(90deg, rgba(255,255,255,0.65), rgba(255,255,255,0.5));
+    border-bottom:1px solid rgba(0,0,0,0.03);backdrop-filter: blur(3px);
+    position:sticky;top:0;z-index:80;
+  }
+  .brand {display:flex;align-items:center;gap:12px;}
+  .brand .logo{
+    width:42px;height:42px;border-radius:10px;background:linear-gradient(180deg,#fff,#f3e6d9);display:flex;align-items:center;justify-content:center;
+    box-shadow: 0 6px 20px rgba(109,75,62,0.06);font-size:20px;
+  }
+  .brand h1{font-size:1.05rem;margin:0;color:var(--primary)}
+  .brand p{margin:0;font-size:0.78rem;color:var(--muted)}
+
+  .header-right{display:flex;align-items:center;gap:12px;}
+  .icon-btn{background:transparent;border:0;padding:8px;border-radius:10px;cursor:pointer;position:relative;font-size:18px}
+  .icon-btn:hover{background:var(--accent-2)}
+  .badge{position:absolute;top:6px;right:6px;background:var(--danger);color:#fff;padding:2px 6px;font-size:11px;border-radius:999px;box-shadow:0 4px 10px rgba(0,0,0,0.08)}
+  .userbox{display:flex;gap:10px;align-items:center;background:var(--panel);padding:6px 10px;border-radius:999px;box-shadow:var(--shadow)}
+  .userbox .name{font-weight:600;font-size:0.9rem}
+  .userbox .role{font-size:0.78rem;color:var(--muted)}
+
+  /* Layout: nav + sidebar column (reserved) + main + cart */
+  .layout{display:grid;grid-template-columns:var(--nav-width) var(--sidebar-width) 1fr var(--cart-width);gap:16px;padding:16px;align-items:start;min-height:calc(100vh - 74px)}
+  @media (max-width:1200px){
+    .layout{grid-template-columns:1fr; padding:12px}
+    .nav-sidebar{position:fixed;left:0;top:0;height:100vh;z-index:120;transform:translateX(-120%);transition:transform .22s ease;background:var(--panel);box-shadow:var(--shadow);}
+    .nav-sidebar.open{transform:translateX(0)}
+    .nav-overlay{display:block}
+    .nav-toggle{display:block}
+    .sidebar{order:2;width:100%}
+    .main{order:3}
+    .cart{order:4}
+  }
+
+  .nav-toggle{display:none;background:transparent;border:0;font-size:22px;padding:8px;cursor:pointer}
+
+  /* Left Navigation Sidebar */
+  .nav-sidebar{background:var(--panel);border-radius:var(--radius);padding:12px;box-shadow:var(--shadow);display:flex;flex-direction:column;gap:6px;position:sticky;top:86px;height:fit-content;align-self:start}
+  .nav-item{display:flex;align-items:center;gap:10px;padding:10px;border-radius:10px;color:var(--muted);cursor:pointer;font-weight:700}
+  .nav-item:hover{background:var(--accent-2);color:var(--primary)}
+  .nav-item.active{background:var(--accent);color:#fff}
+  .nav-item .icon{width:30px;text-align:center}
+  .nav-title{font-size:0.95rem}
+
+  /* Sidebar (Products column) - keep width reserved to avoid reflow */
+  .sidebar{background:transparent;border-radius:var(--radius);padding:14px;align-self:start;position:relative;overflow:visible;transition:width .22s ease;padding-right:42px}
+  .sidebar-inner{background:var(--panel);border-radius:var(--radius);padding:14px;box-shadow:var(--shadow);overflow:hidden;min-height:140px;position:relative}
+  /* the top-right toggle button inside sidebar content */
+  .sidebar .resize-toggle{position:absolute;top:10px;right:10px;border:0;background:transparent;padding:6px;border-radius:6px;cursor:pointer;font-weight:800;z-index:4}
+  .sidebar.collapsed .sidebar-inner{width:var(--sidebar-collapsed-width);}
+
+  .sidebar h3{margin:0 0 6px 0;color:var(--primary);display:flex;align-items:center;justify-content:space-between}
+  .search{display:flex;gap:8px;margin:8px 0}
+  .search input{flex:1;padding:10px;border-radius:10px;border:1px solid rgba(0,0,0,0.06);background:#fff}
+  .add-btn{background:linear-gradient(180deg,var(--accent),#d0a271);border:none;padding:8px 10px;border-radius:10px;color:#fff;font-weight:600;cursor:pointer}
+  .filters{display:flex;gap:6px;margin:10px 0;flex-wrap:wrap}
+  .chip{padding:6px 10px;border-radius:999px;background:#fff;border:1px solid rgba(0,0,0,0.04);font-size:0.86rem;cursor:pointer}
+  .chip.active{background:var(--accent-2);border-color:rgba(0,0,0,0.06)}
+
+  /* Product grid responds to container with auto-fit */
+  .product-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px;margin-top:8px;align-items:start}
+  .product-card{background:linear-gradient(180deg,#fff,#fffaf5);padding:8px;border-radius:10px;border:1px solid rgba(0,0,0,0.03);box-shadow:0 6px 18px rgba(27,20,16,0.03);display:flex;flex-direction:column;gap:6px}
+  .product-card .header{display:flex;justify-content:space-between;align-items:center}
+  .product-card .name{font-weight:700}
+  .product-card .meta{font-size:0.78rem;color:var(--muted)}
+  .product-card .actions{display:flex;gap:6px;margin-top:6px}
+  .btn {background:var(--primary);color:#fff;padding:8px 10px;border-radius:10px;border:0;cursor:pointer;font-weight:700}
+  .btn.secondary {background:#fff;border:1px solid rgba(0,0,0,0.06);color:var(--primary);font-weight:600}
+
+  /* Main content (center) */
+  .main{background:var(--panel);border-radius:var(--radius);padding:14px;box-shadow:var(--shadow)}
+  .panel{padding:12px;border-radius:10px;background:linear-gradient(180deg,#fff,#fff);border:1px solid rgba(0,0,0,0.03)}
+  .section-title{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
+  .row{display:flex;gap:12px}
+  .col{flex:1}
+
+  /* Orders columns */
+  .orders-columns{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  @media (max-width:900px){ .orders-columns{grid-template-columns:1fr} }
+  .order-card{background:#fff;border-radius:10px;padding:10px;border:1px solid rgba(0,0,0,0.03);margin-bottom:8px;box-shadow:0 4px 12px rgba(27,20,16,0.02)}
+  .order-card h4{margin:0;font-size:0.95rem}
+  .order-meta{font-size:0.8rem;color:var(--muted);margin-top:6px}
+  .order-items{margin-top:8px;font-size:0.9rem}
+
+  /* Inventory table & settings */
+  table{width:100%;border-collapse:collapse;margin-top:8px}
+  th,td{padding:10px;border-bottom:1px solid rgba(0,0,0,0.03);text-align:left}
+  th{background:var(--accent-2);font-weight:700}
+
+  /* History table */
+  .history-wrap{max-height:54vh;overflow:auto;border:1px solid rgba(0,0,0,0.03);padding:8px;border-radius:8px}
+
+  /* Right cart */
+  .cart{background:var(--panel);border-radius:var(--radius);padding:14px;box-shadow:var(--shadow);position:sticky;top:86px;height:fit-content;align-self:start}
+  .cart h3{margin:0 0 8px 0;color:var(--primary)}
+  .cart-items{max-height:46vh;overflow:auto;margin-bottom:10px}
+  .cart-row{display:flex;justify-content:space-between;align-items:center;padding:8px;border-radius:8px;background:linear-gradient(180deg,#fff,#fffaf5);border:1px solid rgba(0,0,0,0.03);margin-bottom:8px}
+  .total{display:flex;justify-content:space-between;font-weight:800;margin-top:6px;font-size:1rem}
+  .cart-actions{display:flex;gap:8px;margin-top:10px}
+
+  /* Modals */
+  .modal-backdrop{position:fixed;inset:0;background:rgba(18,12,8,0.4);display:none;align-items:center;justify-content:center;z-index:999}
+  .modal{background:var(--panel);padding:16px;border-radius:12px;min-width:320px;max-width:640px;box-shadow:0 14px 40px rgba(27,20,16,0.12)}
+  .modal h3{margin:0 0 10px 0}
+  .form-row{margin-bottom:8px}
+  .form-row label{display:block;font-size:0.85rem;color:var(--muted);margin-bottom:6px}
+  .form-row input,.form-row textarea,.form-row select{width:100%;padding:10px;border-radius:10px;border:1px solid rgba(0,0,0,0.06);background:#fff}
+  .small{font-size:0.86rem;color:var(--muted)}
+
+  /* Login screen */
+  #loginModal{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:linear-gradient(180deg, rgba(255,250,246,0.9), rgba(255,250,246,0.98));z-index:1000}
+  .login-card{background:var(--panel);padding:20px;border-radius:14px;box-shadow:0 20px 50px rgba(27,20,16,0.12);width:420px;max-width:95%}
+  .login-hero{display:flex;gap:12px;align-items:center;margin-bottom:12px}
+  .login-hero .logo{width:56px;height:56px;border-radius:10px;background:linear-gradient(180deg,#fff,#f3e6d9);display:flex;align-items:center;justify-content:center;font-size:22px}
+  .login-hero h2{margin:0;color:var(--primary)}
+  .login-hero p{margin:0;color:var(--muted);font-size:0.9rem}
+
+  /* Notification dropdown */
+  .notif-panel{position:absolute;right:20px;top:56px;width:360px;background:var(--panel);border-radius:10px;padding:12px;box-shadow:0 20px 50px rgba(27,20,16,0.12);display:none;z-index:60}
+  .notif-item{padding:8px;border-bottom:1px dashed rgba(0,0,0,0.04)}
+  .notif-item:last-child{border-bottom:none}
+  .notif-time{font-size:0.78rem;color:var(--muted)}
+
+  /* subtle animations */
+  .fade-in{animation:fadeIn 260ms ease;}
+  .bell-ring{animation:bellShake 820ms ease-in-out;}
+  @keyframes fadeIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+  @keyframes bellShake{
+    0%{transform:rotate(0)}
+    25%{transform:rotate(-12deg)}
+    50%{transform:rotate(8deg)}
+    75%{transform:rotate(-6deg)}
+    100%{transform:rotate(0)}
+  }
+
+  /* Receipt styles */
+  .receipt-wrapper{font-family: "Courier New", Courier, monospace; max-width:360px; background:#fffaf1;border-radius:8px;padding:16px;border:1px dashed rgba(0,0,0,0.06)}
+  .receipt-header{text-align:center;margin-bottom:8px}
+  .receipt-header h2{margin:0;font-size:1.05rem;color:var(--primary)}
+  .receipt-items{margin-top:10px;border-top:1px dashed rgba(0,0,0,0.06);padding-top:8px}
+  .receipt-items .item{display:flex;justify-content:space-between;font-size:0.95rem;margin-bottom:6px}
+  .receipt-footer{border-top:1px dashed rgba(0,0,0,0.06);margin-top:8px;padding-top:8px}
+  .print-btn{background:var(--primary);color:#fff;padding:8px 12px;border-radius:8px;border:0;cursor:pointer}
+
+  /* Print rules - only print receipt area */
+  @media print {
+    body * { visibility: hidden; }
+    #printableReceipt, #printableReceipt * { visibility: visible; }
+    #printableReceipt { position: absolute; left: 0; top: 0; width:100%; }
+  }
+
+  /* small helpers */
+  .muted{color:var(--muted)}
+  .center{display:flex;align-items:center;justify-content:center}
+  .tiny{font-size:0.78rem;color:var(--muted)}
+
+  /* Dashboard specific */
+  .dashboard-cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;margin-bottom:12px}
+  .card{background:#fff;padding:12px;border-radius:10px;box-shadow:var(--shadow);border:1px solid rgba(0,0,0,0.03)}
+  .chart-area{height:200px;padding:8px;border-radius:8px;background:linear-gradient(180deg,#fff,#fffaf5);border:1px solid rgba(0,0,0,0.03)}
+  .pdf-btn{background:linear-gradient(180deg,var(--primary),#5b3f34);color:#fff;padding:8px 12px;border-radius:8px;border:0;cursor:pointer}
+  .nav-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.28);z-index:110}
+
+  /* Welcome box */
+  .welcome-box{display:flex;flex-direction:column;align-items:center;justify-content:center;height:60vh;border-radius:12px;border:1px dashed rgba(0,0,0,0.04);background:linear-gradient(180deg,#fff,#fffaf6);padding:24px}
+  .welcome-box h2{margin:0 0 8px 0;color:var(--primary)}
+  .welcome-box p{margin:0;color:var(--muted)}
+
+  /* Products fade content (both sidebar-inner and central products area) */
+  .panel-fade {
+    transition: opacity .32s ease, transform .32s ease;
+    opacity: 0;
+    transform: translateY(-6px);
+    pointer-events: none;
+  }
+  .panel-visible {
+    opacity: 1;
+    transform: none;
+    pointer-events: auto;
+  }
+</style>
+</head>
+<body>
+
+<!-- NAV OVERLAY (mobile) -->
+<div id="navOverlay" class="nav-overlay" onclick="closeMobileNav()" style="display:none"></div>
+
+<!-- LOGIN -->
+<div id="loginModal" aria-hidden="false">
+  <div class="login-card">
+    <div style="display:flex;justify-content:space-between;align-items:center">
+      <div class="login-hero">
+        <div class="logo">☕</div>
+        <div>
+          <h2>Kape Timplado</h2>
+          <p class="tiny muted">Sign in to continue</p>
+        </div>
+      </div>
+      <div class="tiny muted"></div>
+    </div>
+
+    <div style="margin-top:6px;">
+      <div class="form-row">
+        <label>Username</label>
+        <input id="loginUser" placeholder>
+      </div>
+      <div class="form-row">
+        <label>Password</label>
+        <input id="loginPass" type="password" placeholder>
+      </div>
+      <div class="form-row">
+        <label>Role</label>
+        <select id="loginRole">
+          <option value="admin">Admin</option>
+          <option value="barista">Barista</option>
+        </select>
+      </div>
+
+      <div style="display:flex;gap:8px;margin-top:10px">
+        <button class="btn" style="flex:1" onclick="login()">Sign in</button>
+      </div>
+
+      <div class="tiny muted" style="margin-top:10px">Accounts for demo: <strong>admin / 1234</strong> and <strong>barista / 1234</strong></div>
+    </div>
+  </div>
+</div>
+
+<!-- Header -->
+<header>
+  <div style="display:flex;align-items:center;gap:12px">
+    <button class="nav-toggle icon-btn" id="mobileNavToggle" onclick="toggleMobileNav()" title="Menu" aria-label="Toggle navigation">☰</button>
+    <div class="brand">
+      <div class="logo" aria-hidden>☕</div>
+      <div>
+        <h1>Kape Timplado</h1>
+        <p class="tiny muted">Point of Sale</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="header-right">
+    <div style="position:relative">
+      <button id="notifBtn" class="icon-btn" title="Notifications" onclick="toggleNotif()" aria-expanded="false">🔔<span id="notifBadge" class="badge" style="display:none">0</span></button>
+      <div id="notifPanel" class="notif-panel fade-in" role="dialog" aria-modal="false" style="display:none">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+          <strong>Notifications</strong>
+          <div style="display:flex;gap:8px">
+            <button class="btn secondary" onclick="clearNotifications()">Clear</button>
+          </div>
+        </div>
+        <div id="notifList" class="small muted">No notifications</div>
+      </div>
+    </div>
+
+    <div style="position:relative">
+      <button id="lowBtn" class="icon-btn" title="Stock alerts" onclick="toggleLow()" aria-expanded="false">📦<span id="lowBadge" class="badge" style="display:none">0</span></button>
+      <div id="lowPanel" class="notif-panel fade-in" style="display:none">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+          <strong>Stock Alerts</strong>
+          <div style="display:flex;gap:8px">
+            <button class="btn secondary" onclick="acknowledgeLow()">Acknowledge</button>
+          </div>
+        </div>
+        <div id="lowList" class="small muted">No low stock</div>
+      </div>
+    </div>
+
+    <div class="userbox" id="userBox">
+      <div>
+        <div class="name" id="userName">Not signed</div>
+        <div class="role" id="userRole">—</div>
+      </div>
+      <button id="logoutBtn" class="btn secondary" style="display:none" onclick="logout()">Logout</button>
+    </div>
+  </div>
+</header>
+
+<!-- Main layout -->
+<div class="layout" role="main">
+
+  <!-- Left: Navigation -->
+  <nav class="nav-sidebar" aria-label="Main navigation" id="navSidebar">
+    <div class="nav-item active" data-tab="tabDashboard" onclick="switchTabFromNav(event)" id="nav_dashboard"><span class="icon">📊</span><span class="nav-title">Dashboard</span></div>
+    <div class="nav-item" data-tab="tabProducts" onclick="switchTabFromNav(event)" id="nav_products"><span class="icon">☕</span><span class="nav-title">Products</span></div>
+    <div class="nav-item" data-tab="tabOrders" onclick="switchTabFromNav(event)" id="nav_orders"><span class="icon">🧾</span><span class="nav-title">Orders</span></div>
+    <div class="nav-item" data-tab="tabInventory" onclick="switchTabFromNav(event)" id="nav_inventory"><span class="icon">📦</span><span class="nav-title">Inventory</span></div>
+    <div class="nav-item" data-tab="tabSettings" onclick="switchTabFromNav(event)" id="nav_settings"><span class="icon">⚙️</span><span class="nav-title">Settings</span></div>
+    <div class="nav-item" data-tab="tabDaily" onclick="switchTabFromNav(event)" id="nav_daily"><span class="icon">💰</span><span class="nav-title">Daily Sales</span></div>
+    <div class="nav-item" data-tab="tabHistory" onclick="switchTabFromNav(event)" id="nav_history"><span class="icon">🧮</span><span class="nav-title">Transaction History</span></div>
+    <div class="nav-item" data-tab="tabCloseout" onclick="switchTabFromNav(event)" id="nav_closeout"><span class="icon">🔚</span><span class="nav-title">Closeout</span></div>
+  </nav>
+
+  <!-- Sidebar column reserved — inside it we show a fadeable inner products panel -->
+  <aside id="productsSidebar" class="sidebar" aria-label="Products & quick add">
+    <!-- This inner element will fade in/out while the outer column keeps its width (avoids layout reflow) -->
+    <div id="productsSidebarInner" class="sidebar-inner panel-fade" aria-hidden="true">
+
+      <button id="toggleSidebarBtn" class="resize-toggle" title="Toggle sidebar size" onclick="toggleProductsSidebar()">⇔</button>
+
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <div>
+          <h3>Products <span class="tiny muted" id="sidebarStateHint" style="font-weight:600;font-size:0.78rem"></span></h3>
+          <div class="tiny muted">Add or quick-add to cart</div>
+        </div>
+        <button id="openProdForm" class="add-btn" onclick="openProductForm()" title="Add product">+ Add</button>
+      </div>
+
+      <div class="search" style="margin-top:10px">
+        <input id="searchInput" placeholder="Search products..." oninput="renderProducts()" />
+        <select id="filterType" onchange="renderProducts()" class="tiny">
+          <option value="">All</option>
+          <option value="beverage">Beverage</option>
+          <option value="food">Food</option>
+          <option value="noncoffee">Non-Coffee Based</option>
+        </select>
+      </div>
+
+      <div class="filters">
+        <div class="chip active" data-filter="" onclick="setChip(this)">All</div>
+        <div class="chip" data-filter="beverage" onclick="setChip(this)">Beverages</div>
+        <div class="chip" data-filter="noncoffee" onclick="setChip(this)">Non-Coffee</div>
+        <div class="chip" data-filter="food" onclick="setChip(this)">Food</div>
+      </div>
+
+      <div id="productGrid" class="product-grid" style="margin-top:8px"></div>
+    </div>
+  </aside>
+
+  <!-- Center: Tabs & content -->
+  <section class="main" aria-label="Main content">
+
+    <!-- Dashboard (Admin only) -->
+    <div id="tabDashboard" class="panel" role="tabpanel">
+      <div class="section-title"><strong>Admin Dashboard</strong><div class="tiny muted">Overview & analytics</div></div>
+
+      <div id="dashboardAlert" class="tiny muted" style="margin-bottom:8px"></div>
+
+      <div class="dashboard-cards">
+        <div class="card">
+          <div class="tiny muted">Total Sales</div>
+          <div id="dashTotalSales" style="font-weight:800;font-size:1.2rem">₱0.00</div>
+        </div>
+        <div class="card">
+          <div class="tiny muted">Total Orders</div>
+          <div id="dashTotalOrders" style="font-weight:800;font-size:1.2rem">0</div>
+        </div>
+        <div class="card">
+          <div class="tiny muted">Products Low Stock</div>
+          <div id="dashLowCount" style="font-weight:800;font-size:1.2rem">0</div>
+        </div>
+        <div class="card">
+          <div class="tiny muted">Top Product</div>
+          <div id="dashTopProduct" style="font-weight:800;font-size:1.2rem">—</div>
+        </div>
+      </div>
+
+      <div style="display:flex;gap:12px;align-items:center;margin-bottom:12px;flex-wrap:wrap">
+        <div style="flex:1;min-width:300px">
+          <div class="tiny muted">Sales (Last orders)</div>
+          <div class="chart-area" id="salesChartArea">
+            <canvas id="salesChart" width="600" height="200" style="width:100%;height:100%"></canvas>
+          </div>
+        </div>
+        <div style="width:260px;min-width:200px">
+          <div class="tiny muted">Stock Summary</div>
+          <div id="stockSummary" class="card" style="margin-top:8px;overflow:auto;max-height:200px"></div>
+        </div>
+      </div>
+
+      <div style="display:flex;justify-content:flex-end;gap:8px">
+        <button class="pdf-btn" onclick="generateDashboardPDF()">Download PDF</button>
+      </div>
+    </div>
+
+    <!-- Welcome (for Barista) -->
+    <div id="tabWelcome" class="panel" style="display:none" role="tabpanel">
+      <div class="welcome-box">
+        <h2>Welcome</h2>
+        <p class="tiny muted">Please select a module from the left navigation to begin.</p>
+        <div style="margin-top:12px">
+          <button class="btn" onclick="activateNav('tabProducts'); showProductsPanel()">Open Products</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Products Tab (main central listing) -->
+    <div id="tabProducts" class="panel panel-fade" role="tabpanel" style="display:none">
+      <div class="section-title"><strong>Catalog</strong><div class="tiny muted">Click Add to choose flavors/add-ons</div></div>
+      <div id="productsLarge" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px"></div>
+    </div>
+
+    <!-- Orders Tab -->
+    <div id="tabOrders" class="panel" style="display:none" role="tabpanel">
+      <div class="section-title"><strong>Orders</strong><div class="tiny muted">Separate lists for Beverages and Food</div></div>
+      <div class="orders-columns">
+        <div>
+          <h4 style="margin:0 0 8px 0">🥤 Beverage Orders</h4>
+          <div id="bevOrders"></div>
+        </div>
+        <div>
+          <h4 style="margin:0 0 8px 0">🍽 Food Orders</h4>
+          <div id="foodOrders"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Inventory Tab -->
+    <div id="tabInventory" class="panel" style="display:none" role="tabpanel">
+      <div class="section-title"><strong>Inventory</strong><div class="tiny muted">Adjust stock or restock items</div></div>
+      <table><thead><tr><th>Name</th><th>Category</th><th>Size</th><th>Qty</th><th>Status</th><th>Actions</th></tr></thead>
+      <tbody id="inventoryBody"></tbody></table>
+    </div>
+
+    <!-- Settings -->
+    <div id="tabSettings" class="panel" style="display:none" role="tabpanel">
+      <div class="section-title"><strong>Manage Products</strong><div class="tiny muted">Edit or duplicate.</div></div>
+      <table><thead><tr><th>Name</th><th>Category</th><th>Size</th><th>Flavors/Add-ons</th><th>Price</th><th>Qty</th><th>Actions</th></tr></thead>
+      <tbody id="settingsBody"></tbody></table>
+    </div>
+
+    <!-- Daily Sales Record (Admin only) -->
+    <div id="tabDaily" class="panel" style="display:none" role="tabpanel">
+      <div class="section-title"><strong>Daily Sales Record</strong><div class="tiny muted">Summary + full order list for today</div></div>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+        <div class="small muted" id="dailyDateLabel">Date: —</div>
+        <div style="display:flex;gap:8px">
+          <button class="btn secondary" onclick="renderDaily()">Refresh</button>
+          <button class="pdf-btn" onclick="generateDailySalesPDF()">Download Daily Sales (PDF)</button>
+        </div>
+      </div>
+
+      <div id="dailySummary" style="margin-bottom:12px"></div>
+      <div class="history-wrap">
+        <table><thead><tr><th>Order ID</th><th>Time</th><th>Items</th><th>Total</th><th>Payment</th><th>Actions</th></tr></thead>
+        <tbody id="dailyBody"></tbody></table>
+      </div>
+    </div>
+
+    <!-- Transaction History (Admin only) -->
+    <div id="tabHistory" class="panel" style="display:none" role="tabpanel">
+      <div class="section-title"><strong>Transaction History</strong><div class="tiny muted">All previous and current orders (Admin only)</div></div>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+        <div class="small muted">Showing all transactions</div>
+        <div style="display:flex;gap:8px">
+          <button class="btn secondary" onclick="renderHistory()">Refresh</button>
+          <button class="pdf-btn" onclick="generateTransactionsPDF()">Download Transactions (PDF)</button>
+        </div>
+      </div>
+      <div class="history-wrap">
+        <table><thead><tr><th>Order ID</th><th>Date</th><th>Items</th><th>Total</th><th>Payment</th><th>Actions</th></tr></thead>
+        <tbody id="historyBody"></tbody></table>
+      </div>
+    </div>
+
+    <!-- Closeout -->
+    <div id="tabCloseout" class="panel" style="display:none" role="tabpanel">
+      <div class="section-title"><strong>Daily Closeout</strong><div class="tiny muted">Summary of sales</div></div>
+      <div id="closeoutReport" class="small muted">No transactions yet.</div>
+    </div>
+  </section>
+
+  <!-- Right: Cart & checkout -->
+  <aside class="cart" aria-label="Cart & checkout">
+    <h3>Cart</h3>
+    <div class="tiny muted" id="cartCount">0 items</div>
+    <div id="cartItems" class="cart-items" aria-live="polite">Cart is empty.</div>
+    <div class="total">
+      <div>Total</div>
+      <div id="cartTotal">₱0.00</div>
+    </div>
+    <div class="cart-actions">
+      <button class="btn" onclick="openCheckout()">Checkout</button>
+      <button class="btn secondary" onclick="clearCart()">Clear</button>
+    </div>
+    <div style="margin-top:12px" class="small muted">Barista can manage products & see orders. Admin has full access.</div>
+  </aside>
+</div>
+
+<!-- Add-ons/Flavors Modal -->
+<div id="addonsModal" class="modal-backdrop" role="dialog" aria-modal="true">
+  <div class="modal">
+    <h3 id="addonsTitle">Choose options</h3>
+    <div id="addonsOptions" style="max-height:220px;overflow:auto;margin-bottom:10px"></div>
+    <div style="display:flex;justify-content:flex-end;gap:8px">
+      <button class="btn" onclick="confirmAddons()">Add to cart</button>
+      <button class="btn secondary" onclick="closeAddons()">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- Product Form Modal -->
+<div id="productModal" class="modal-backdrop" role="dialog" aria-modal="true">
+  <div class="modal">
+    <h3 id="productModalTitle">Product</h3>
+
+    <div class="form-row">
+      <label>Name</label>
+      <input id="prodName" />
+    </div>
+    <div class="form-row">
+      <label>Category</label>
+      <select id="prodCategory" onchange="toggleProdFields()">
+        <option value="food">Food</option>
+        <option value="beverage">Beverage</option>
+        <option value="noncoffee">Non-Coffee Based</option>
+      </select>
+    </div>
+    <div class="form-row" id="prodSizeRow" style="display:none">
+      <label>Size</label>
+      <select id="prodSize"><option>16 oz</option><option>22 oz</option></select>
+    </div>
+    <div class="form-row" id="prodAddonsBeverage" style="display:none">
+      <label>Add-ons (comma separated)</label>
+      <textarea id="prodAddonsBeverageInput" rows="2" placeholder="e.g. Extra shot,Whipped cream"></textarea>
+    </div>
+    <div class="form-row" id="prodAddonsFood" style="display:none">
+      <label>Flavors (comma separated)</label>
+      <textarea id="prodAddonsFoodInput" rows="2" placeholder="e.g. Spicy,Garlic,Cheesy"></textarea>
+    </div>
+    <div class="form-row">
+      <label>Price (₱)</label>
+      <input id="prodPrice" type="number" step="0.25" />
+    </div>
+    <div class="form-row">
+      <label>Quantity</label>
+      <input id="prodQty" type="number" />
+    </div>
+
+    <div style="display:flex;justify-content:flex-end;gap:8px">
+      <button class="btn" onclick="saveProduct()">Save</button>
+      <button class="btn secondary" onclick="closeProductModal()">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- Checkout Modal -->
+<div id="checkoutModal" class="modal-backdrop" role="dialog" aria-modal="true">
+  <div class="modal">
+    <h3>Checkout</h3>
+    <div class="form-row">
+      <label>Customer name (optional)</label>
+      <input id="custName" />
+    </div>
+    <div class="form-row">
+      <label>Notes (optional)</label>
+      <textarea id="custNotes" rows="2" placeholder="e.g. No sugar, pick-up at counter"></textarea>
+    </div>
+    <div class="form-row">
+      <label>Payment method</label>
+      <select id="payMode"><option>Cash</option><option>Card</option><option>GCash</option></select>
+    </div>
+    <div class="form-row small muted">Total: <span id="checkoutTotal">₱0.00</span></div>
+
+    <div style="display:flex;justify-content:flex-end;gap:8px">
+      <button class="btn" onclick="confirmCheckout()">Confirm</button>
+      <button class="btn secondary" onclick="closeCheckout()">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- Receipt Modal -->
+<div id="receiptModal" class="modal-backdrop" role="dialog" aria-modal="true">
+  <div class="modal" style="max-width:420px">
+    <div id="printableReceipt">
+      <div class="receipt-wrapper" id="receiptContent">
+        <div class="receipt-header">
+          <h2>Kape Timplado Café</h2>
+          <div class="tiny muted">Light Café • Thank you for visiting</div>
+        </div>
+        <div id="receiptMeta" class="tiny muted" style="margin-top:8px"></div>
+        <div class="receipt-items" id="receiptItems"></div>
+        <div class="receipt-footer">
+          <div style="display:flex;justify-content:space-between;margin-top:8px"><div><strong>Total</strong></div><div id="receiptTotal"></div></div>
+          <div style="display:flex;justify-content:space-between;margin-top:4px"><div class="tiny muted">Payment</div><div id="receiptPayment" class="tiny muted"></div></div>
+          <div style="text-align:center;margin-top:12px" class="tiny muted">Thank you & enjoy your coffee!</div>
+        </div>
+      </div>
+    </div>
+
+    <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:12px">
+      <button class="print-btn" onclick="printReceipt()">Print Receipt</button>
+      <button class="btn secondary" onclick="closeReceipt()">Close</button>
+    </div>
+  </div>
+</div>
+
+<!-- Scripts -->
+<script>
+/* ==========================================================
+   Final Kape Timplado POS — Products fade in/out + Daily Sales module
+   ========================================================== */
+
+/* -------------------------
+   App State & Persistence
+   ------------------------- */
+let products = JSON.parse(localStorage.getItem('kt_products') || '[]'); // {name,category,size,addons,price,qty}
+let orders = JSON.parse(localStorage.getItem('kt_orders') || '[]');     // {id,date,total,payment,customer,notes,items}
+let notifications = JSON.parse(localStorage.getItem('kt_notifs') || '[]'); // {type,text,date,seen}
+let cart = []; // {name,price,qty,size,addons,category}
+let pendingAddonIndex = null;
+let pendingSelectedAddons = [];
+let currentUser = null; // {username,role,display}
+let editingProductIndex = null;
+const LOW_THRESHOLD = 5;
+
+/* Demo accounts */
+const accounts = [
+  {username:'admin', password:'1234', role:'admin', display:'Administrator'},
+  {username:'barista', password:'1234', role:'barista', display:'Barista'}
+];
+
+/* -------------------------
+   Helper utilities
+   ------------------------- */
+function saveAll(){
+  localStorage.setItem('kt_products', JSON.stringify(products));
+  localStorage.setItem('kt_orders', JSON.stringify(orders));
+  localStorage.setItem('kt_notifs', JSON.stringify(notifications));
+}
+function formatMoney(v){ return '₱' + Number(v||0).toFixed(2); }
+function $(id){ return document.getElementById(id); }
+function escapeHtml(s=''){ return String(s).replace(/[&<>"']/g, m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
+function nowISO(){ return new Date().toISOString(); }
+
+/* -------------------------
+   Products visibility (fade) — we do NOT change the grid column width,
+   only toggle visibility and pointer-events of the inner product content,
+   so the other panels keep their orientation and placement unchanged.
+   ------------------------- */
+function showProductsPanel(){
+  // show both sidebar inner and central tabProducts content with fade in
+  const sbInner = $('productsSidebarInner');
+  const central = $('tabProducts');
+  if(sbInner){
+    sbInner.classList.remove('panel-fade');
+    sbInner.classList.add('panel-visible');
+    sbInner.setAttribute('aria-hidden','false');
+  }
+  if(central){
+    central.style.display = '';
+    // allow CSS transition to apply
+    setTimeout(()=>{ central.classList.remove('panel-fade'); central.classList.add('panel-visible'); }, 12);
+  }
+  // render products contents
+  renderProducts();
+}
+function hideProductsPanel(){
+  const sbInner = $('productsSidebarInner');
+  const central = $('tabProducts');
+  if(sbInner){
+    sbInner.classList.remove('panel-visible');
+    sbInner.classList.add('panel-fade');
+    sbInner.setAttribute('aria-hidden','true');
+  }
+  if(central){
+    central.classList.remove('panel-visible');
+    central.classList.add('panel-fade');
+    // keep display in DOM so layout remains; but visually hidden via opacity.
+    // no further action needed
+  }
+}
+
+/* -------------------------
+   Sidebar size persistence & toggle (resizable via toggle button)
+   ------------------------- */
+function setSidebarWidth(width){
+  document.documentElement.style.setProperty('--sidebar-width', width + 'px');
+}
+function applySavedSidebarState(){
+  const key = localStorage.getItem('kt_sidebar_expanded');
+  const sidebar = $('productsSidebar');
+  if(key === 'false'){ // collapsed visual shape
+    sidebar.classList.add('collapsed');
+    setSidebarWidth(parseInt(getComputedStyle(document.documentElement).getPropertyValue('--sidebar-collapsed-width')));
+    $('sidebarStateHint').textContent = '(collapsed)';
+  } else {
+    sidebar.classList.remove('collapsed');
+    setSidebarWidth( parseInt(localStorage.getItem('kt_sidebar_width') || getComputedStyle(document.documentElement).getPropertyValue('--sidebar-width').trim().replace('px','')) );
+    $('sidebarStateHint').textContent = '(expanded)';
+  }
+}
+function toggleProductsSidebar(){
+  const sidebar = $('productsSidebar');
+  const inner = $('productsSidebarInner');
+  const currentCollapsed = sidebar.classList.contains('collapsed');
+  if(currentCollapsed){
+    // expand
+    const savedWidth = parseInt(localStorage.getItem('kt_sidebar_width') || 320);
+    sidebar.classList.remove('collapsed');
+    setSidebarWidth(savedWidth);
+    localStorage.setItem('kt_sidebar_expanded','true');
+    $('sidebarStateHint').textContent = '(expanded)';
+  } else {
+    // collapse
+    sidebar.classList.add('collapsed');
+    setSidebarWidth(parseInt(getComputedStyle(document.documentElement).getPropertyValue('--sidebar-collapsed-width') || 120));
+    localStorage.setItem('kt_sidebar_expanded','false');
+    $('sidebarStateHint').textContent = '(collapsed)';
+  }
+}
+/* Double-click on toggle sets a wider width and saves */
+function setProductsSidebarWidth(w){
+  localStorage.setItem('kt_sidebar_width', w);
+  setSidebarWidth(w);
+}
+
+/* -------------------------
+   Initial sample data helper
+   ------------------------- */
+function prefillSample(){
+  if(products.length === 0){
+    products = [
+      {name:'Caffe Latte', category:'beverage', size:'16 oz', addons:'Extra shot,Whipped cream', price:120, qty:12},
+      {name:'Matcha Latte', category:'beverage', size:'22 oz', addons:'Vanilla syrup,Extra ice', price:140, qty:9},
+      {name:'Iced Americano', category:'beverage', size:'22 oz', addons:'Extra ice', price:95, qty:11},
+      {name:'Iced Lemonade', category:'noncoffee', size:'16 oz', addons:'Lemon syrup,Ice', price:85, qty:14},
+      {name:'Chicken Sandwich', category:'food', size:'', addons:'Spicy,Garlic,Cheesy', price:150, qty:10},
+      {name:'Signature Pancake', category:'food', size:'', addons:'Butterscotch,Blueberry,Chocolate', price:180, qty:3}
+    ];
+    saveAll();
+    alert('Sample products added. Use admin / 1234 or barista / 1234.');
+    renderAll();
+  } else {
+    alert('Products already exist.');
+  }
+}
+
+/* -------------------------
+   Login & role handling
+   ------------------------- */
+function login(){
+  const u = $('loginUser').value.trim();
+  const p = $('loginPass').value.trim();
+  const r = $('loginRole').value;
+  const acc = accounts.find(a => a.username === u && a.password === p && a.role === r);
+  if(!acc){ alert('Invalid credentials. Try sample to auto-fill products.'); return; }
+  currentUser = acc;
+  $('loginModal').style.display = 'none';
+  $('userName').textContent = acc.display;
+  $('userRole').textContent = acc.role;
+  $('logoutBtn').style.display = '';
+  applyRoleRestrictions();
+  renderAll();
+
+  // Default views: Admin -> Dashboard (products hidden until clicked)
+  if(acc.role === 'admin'){
+    activateNav('tabDashboard');
+    hideProductsPanel();
+  } else {
+    // Barista sees welcome
+    activateNav('tabWelcome');
+    hideProductsPanel();
+  }
+}
+function logout(){
+  if(confirm('Logout?')){ currentUser = null; $('loginModal').style.display = ''; $('logoutBtn').style.display = 'none'; $('userName').textContent = 'Not signed'; $('userRole').textContent = '--'; applyRoleRestrictions(); hideProductsPanel(); activateNav('tabWelcome'); }
+}
+function applyRoleRestrictions(){
+  // Show/hide nav items based on role
+  const restrictedForBarista = ['nav_dashboard','nav_inventory','nav_settings','nav_closeout','nav_history','nav_daily'];
+  restrictedForBarista.forEach(id => {
+    const el = document.getElementById(id);
+    const tabId = el ? el.getAttribute('data-tab') : null;
+    if(el){
+      if(currentUser && currentUser.role === 'barista'){ el.style.display = 'none'; if(tabId && $(tabId)) $(tabId).style.display = 'none'; }
+      else { el.style.display = ''; if(tabId && $(tabId)) $(tabId).style.display = ''; }
+    }
+  });
+  // product add button visible always when sidebar visible
+  if($('openProdForm')) $('openProdForm').style.display = '';
+}
+
+/* -------------------------
+   Mobile nav helpers
+   ------------------------- */
+function toggleMobileNav(){
+  const nav = $('navSidebar');
+  const overlay = $('navOverlay');
+  if(nav.classList.contains('open')){ nav.classList.remove('open'); overlay.style.display = 'none'; } else { nav.classList.add('open'); overlay.style.display = 'block'; }
+}
+function closeMobileNav(){ const nav = $('navSidebar'); nav.classList.remove('open'); $('navOverlay').style.display = 'none'; }
+
+/* -------------------------
+   Notifications
+   ------------------------- */
+function pushNotification(type, text){
+  notifications.unshift({type, text, date: nowISO(), seen:false});
+  saveAll(); renderNotifications(); animateBell();
+}
+function renderNotifications(){
+  const list = $('notifList');
+  if(!list) return;
+  if(notifications.length === 0){ list.innerHTML = '<div class="tiny muted">No notifications</div>'; $('notifBadge').style.display='none'; return; }
+  const html = notifications.map(n => `<div class="notif-item"><div>${escapeHtml(n.text)}</div><div class="notif-time">${new Date(n.date).toLocaleString()}</div></div>`).join('');
+  list.innerHTML = html;
+  const unseenCount = notifications.filter(n => !n.seen).length;
+  if(unseenCount > 0){ $('notifBadge').textContent = unseenCount; $('notifBadge').style.display = ''; } else { $('notifBadge').style.display = 'none'; }
+}
+function clearNotifications(){ notifications = []; saveAll(); renderNotifications(); }
+function toggleNotif(){
+  const p = $('notifPanel'); p.style.display = p.style.display === 'block' ? 'none' : 'block'; if(p.style.display==='block') notifications.forEach(n=>n.seen=true), saveAll(), renderNotifications();
+}
+function animateBell(){ const btn = $('notifBtn'); btn.classList.remove('bell-ring'); void btn.offsetWidth; btn.classList.add('bell-ring'); setTimeout(()=>btn.classList.remove('bell-ring'),900); }
+
+/* Low stock and out-of-stock handling */
+function renderLowStockPanel(){
+  const low = products.filter(p => Number(p.qty) < LOW_THRESHOLD && Number(p.qty) > 0);
+  const out = products.filter(p => Number(p.qty) === 0);
+  const listEl = $('lowList');
+  if(listEl == null) return;
+  if(low.length === 0 && out.length === 0){ listEl.innerHTML = '<div class="tiny muted">No low stock</div>'; $('lowBadge').style.display = 'none'; return; }
+
+  let html = '';
+  if(low.length){
+    html += low.map(p => `<div class="notif-item"><strong>${escapeHtml(p.name)}</strong> • ${p.qty} left</div>`).join('');
+  }
+  if(out.length){
+    html += out.map(p => `<div class="notif-item" style="color:${p.qty===0? 'var(--danger)':''}"><strong>${escapeHtml(p.name)}</strong> • Out of stock</div>`).join('');
+  }
+  listEl.innerHTML = html;
+
+  // push notifications for low and out-of-stock if not already present
+  low.forEach(p => {
+    const exists = notifications.some(n => n.type === 'lowStock' && n.text.includes(p.name));
+    if(!exists) pushNotification('lowStock', `Low stock: ${p.name} (${p.qty})`);
+  });
+  out.forEach(p => {
+    const exists = notifications.some(n => n.type === 'outStock' && n.text.includes(p.name));
+    if(!exists) pushNotification('outStock', `Out of stock: ${p.name}`);
+  });
+
+  const totalAlerts = low.length + out.length;
+  if(totalAlerts > 0){ $('lowBadge').textContent = totalAlerts; $('lowBadge').style.display = ''; } else { $('lowBadge').style.display = 'none'; }
+}
+
+/* -------------------------
+   Product rendering & actions
+   ------------------------- */
+function setChip(el){
+  document.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
+  el.classList.add('active');
+  const filter = el.getAttribute('data-filter');
+  $('filterType').value = filter;
+  renderProducts();
+}
+
+function renderProducts(){
+  const grid = $('productGrid'); if(!grid) return; grid.innerHTML = '';
+  const large = $('productsLarge'); if(large) large.innerHTML = '';
+  const q = $('searchInput') ? $('searchInput').value.trim().toLowerCase() : '';
+  const filter = $('filterType') ? $('filterType').value : '';
+
+  products.forEach((p, idx) => {
+    if(filter && p.category !== filter) return;
+    if(q && !p.name.toLowerCase().includes(q) && !(p.addons || '').toLowerCase().includes(q)) return;
+
+    // small card
+    const card = document.createElement('div');
+    card.className = 'product-card';
+    card.innerHTML = `
+      <div class="header">
+        <div>
+          <div class="name">${escapeHtml(p.name)}</div>
+          <div class="meta">${escapeHtml(p.category)} ${p.size ? '• ' + escapeHtml(p.size) : ''}</div>
+        </div>
+        <div style="text-align:right">
+          <div style="font-weight:800;color:var(--primary)">${formatMoney(p.price)}</div>
+          <div class="meta">Stock: ${p.qty}</div>
+        </div>
+      </div>
+      <div class="tiny muted">${p.addons ? (p.category==='food' ? 'Flavors: ' : 'Add-ons: ') + escapeHtml(p.addons) : ''}</div>
+      <div class="actions">
+        <button class="btn" onclick="handleAddClick(${idx})">Add</button>
+        <button class="btn secondary" onclick="editProduct(${idx})">Edit</button>
+      </div>
+    `;
+    grid.appendChild(card);
+
+    // large center listing
+    if(large){
+      const lg = card.cloneNode(true);
+      lg.querySelector('.btn').setAttribute('onclick', `handleAddClick(${idx})`);
+      lg.querySelector('.btn.secondary').setAttribute('onclick', `editProduct(${idx})`);
+      large.appendChild(lg);
+    }
+  });
+
+  // If no products, show helpful note
+  if(grid && grid.children.length === 0){
+    grid.innerHTML = '<div class="tiny muted">No products to show. Click "+ Add" to create a product.</div>';
+  }
+}
+
+/* Open addon modal for product with addons/flavors */
+function handleAddClick(index){
+  const p = products[index];
+  if(!p) return;
+  if(Number(p.qty) <= 0){ alert('Out of stock'); return; }
+  const arr = (p.addons && p.addons.trim()) ? p.addons.split(',').map(s=>s.trim()).filter(Boolean) : [];
+  if(arr.length === 0){
+    addToCart(index, []);
+    return;
+  }
+  pendingAddonIndex = index;
+  pendingSelectedAddons = [];
+  $('addonsTitle').textContent = `Choose ${p.category === 'food' ? 'flavors' : 'add-ons'} for "${p.name}"`;
+  const opts = $('addonsOptions'); opts.innerHTML = '';
+  arr.forEach((a,i) => {
+    const id = `opt_${index}_${i}`;
+    const div = document.createElement('div');
+    div.style.marginBottom = '8px';
+    div.innerHTML = `<label style="display:flex;align-items:center;gap:8px"><input type="checkbox" id="${id}" value="${escapeHtml(a)}" onchange="togglePending(this)"> ${escapeHtml(a)}</label>`;
+    opts.appendChild(div);
+  });
+  $('addonsModal').style.display = 'flex';
+}
+function togglePending(chk){ const v = chk.value; if(chk.checked){ if(!pendingSelectedAddons.includes(v)) pendingSelectedAddons.push(v);} else pendingSelectedAddons = pendingSelectedAddons.filter(x=>x!==v); }
+function confirmAddons(){ if(pendingAddonIndex === null) return closeAddons(); addToCart(pendingAddonIndex, pendingSelectedAddons.slice()); closeAddons(); }
+function closeAddons(){ pendingAddonIndex = null; pendingSelectedAddons = []; $('addonsModal').style.display = 'none'; }
+
+/* Add to cart logic with combining same product + addons */
+function addToCart(prodIndex, addons){
+  const p = products[prodIndex];
+  if(!p) return;
+  const key = cart.find(c => c.name === p.name && (c.size||'') === (p.size||'') && (c.addons||[]).join('|') === (addons||[]).join('|'));
+  if(key){ key.qty += 1; } else {
+    cart.push({name:p.name, price:Number(p.price), qty:1, size:p.size||'', addons:addons||[], category:p.category});
+  }
+  renderCart();
+}
+
+/* -------------------------
+   Cart rendering and actions
+   ------------------------- */
+function renderCart(){
+  const box = $('cartItems'); if(!box) return; box.innerHTML = '';
+  if(cart.length === 0){ box.innerHTML = '<div class="tiny muted">Cart is empty.</div>'; $('cartCount').textContent = '0 items'; $('cartTotal').textContent = formatMoney(0); return; }
+  let total = 0, count = 0;
+  cart.forEach((c, idx) => {
+    total += c.price * c.qty; count += c.qty;
+    const row = document.createElement('div');
+    row.className = 'cart-row';
+    row.innerHTML = `<div>
+      <div style="font-weight:700">${escapeHtml(c.name)}${c.size?` • ${escapeHtml(c.size)}`:''}</div>
+      <div class="tiny muted">${(c.addons && c.addons.length) ? 'Add-ons: ' + escapeHtml(c.addons.join(', ')) : ''}</div>
+      <div class="tiny muted">₱${Number(c.price).toFixed(2)} × ${c.qty}</div>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:6px;align-items:center">
+      <div style="display:flex;flex-direction:column;gap:6px">
+        <button class="btn secondary" onclick="changeQty(${idx}, -1)">-</button>
+        <button class="btn secondary" onclick="changeQty(${idx}, 1)">+</button>
+      </div>
+      <button class="btn" style="background:var(--danger);padding:6px;border-radius:8px;margin-top:6px" onclick="removeCart(${idx})">Remove</button>
+    </div>`;
+    box.appendChild(row);
+  });
+  $('cartCount').textContent = `${count} items`;
+  $('cartTotal').textContent = formatMoney(total);
+}
+function changeQty(idx, delta){ if(!cart[idx]) return; cart[idx].qty = Math.max(1, cart[idx].qty + delta); renderCart(); }
+function removeCart(idx){ cart.splice(idx,1); renderCart(); }
+function clearCart(){ if(confirm('Clear cart?')){ cart = []; renderCart(); } }
+
+/* -------------------------
+   Checkout & Orders
+   ------------------------- */
+function openCheckout(){
+  if(cart.length === 0){ alert('Cart is empty'); return; }
+  const total = cart.reduce((s,c) => s + c.price * c.qty, 0);
+  $('checkoutTotal').textContent = formatMoney(total);
+  $('custName').value = '';
+  $('custNotes').value = '';
+  $('checkoutModal').style.display = 'flex';
+}
+function closeCheckout(){ $('checkoutModal').style.display = 'none'; }
+function confirmCheckout(){
+  const mode = $('payMode').value;
+  const customer = $('custName').value.trim();
+  const notes = $('custNotes').value.trim();
+  const id = Date.now();
+  const total = cart.reduce((s,c) => s + c.price * c.qty, 0);
+  const order = {id, date: nowISO(), total, payment: mode, customer, notes, items: cart.map(i=>({...i})), completed: true};
+  orders.push(order);
+
+  // decrement stock quantities
+  order.items.forEach(it => {
+    const p = products.find(x => x.name === it.name && (x.size||'') === (it.size||''));
+    if(p) p.qty = Math.max(0, Number(p.qty) - Number(it.qty));
+  });
+
+  pushNotification('newOrder', `New order #${id} • ${formatMoney(total)} • ${mode}`);
+  saveAll();
+  cart = [];
+  closeCheckout();
+  renderAll();
+
+  // Immediately open receipt modal for printed copy (optional)
+  openReceiptModal(order);
+}
+
+/* -------------------------
+   Orders rendering
+   ------------------------- */
+function renderOrders(){
+  const bevBox = $('bevOrders'), foodBox = $('foodOrders');
+  if(!bevBox || !foodBox) return;
+  bevBox.innerHTML = ''; foodBox.innerHTML = '';
+  if(orders.length === 0){ bevBox.innerHTML = '<div class="tiny muted">No orders yet</div>'; foodBox.innerHTML = '<div class="tiny muted">No orders yet</div>'; return; }
+  orders.slice().reverse().forEach(o => {
+    const bevItems = o.items.filter(i => i.category === 'beverage' || i.category === 'noncoffee');
+    const foodItems = o.items.filter(i => i.category === 'food');
+    if(bevItems.length){
+      const div = document.createElement('div'); div.className = 'order-card';
+      div.innerHTML = `<h4>Order #${o.id} • ${new Date(o.date).toLocaleString()}</h4>
+        <div class="order-meta">Payment: <strong>${escapeHtml(o.payment)}</strong> • Customer: ${escapeHtml(o.customer||'-')}</div>
+        <div class="order-items">${bevItems.map(it => `<div>${escapeHtml(it.name)}${it.size ? ' • ' + escapeHtml(it.size) : ''} x${it.qty}${it.addons && it.addons.length ? ' — ' + escapeHtml(it.addons.join(', ')) : ''}</div>`).join('')}</div>
+        <div class="tiny muted" style="margin-top:8px">Notes: ${escapeHtml(o.notes||'-')} • Total: ${formatMoney(o.total)}</div>
+        <div style="display:flex;gap:8px;margin-top:8px;justify-content:flex-end">
+          <button class="btn secondary" onclick="openReceiptModalById(${o.id})">Receipt</button>
+        </div>`;
+      bevBox.appendChild(div);
+    }
+    if(foodItems.length){
+      const div = document.createElement('div'); div.className = 'order-card';
+      div.innerHTML = `<h4>Order #${o.id} • ${new Date(o.date).toLocaleString()}</h4>
+        <div class="order-meta">Payment: <strong>${escapeHtml(o.payment)}</strong> • Customer: ${escapeHtml(o.customer||'-')}</div>
+        <div class="order-items">${foodItems.map(it => `<div>${escapeHtml(it.name)} x${it.qty}${it.addons && it.addons.length ? ' — ' + escapeHtml(it.addons.join(', ')) : ''}</div>`).join('')}</div>
+        <div class="tiny muted" style="margin-top:8px">Notes: ${escapeHtml(o.notes||'-')} • Total: ${formatMoney(o.total)}</div>
+        <div style="display:flex;gap:8px;margin-top:8px;justify-content:flex-end">
+          <button class="btn secondary" onclick="openReceiptModalById(${o.id})">Receipt</button>
+        </div>`;
+      foodBox.appendChild(div);
+    }
+  });
+}
+
+/* -------------------------
+   Inventory & Settings rendering
+   ------------------------- */
+function renderInventory(){
+  const body = $('inventoryBody'); if(!body) return; body.innerHTML = '';
+  products.forEach((p, idx) => {
+    const status = Number(p.qty) === 0 ? '❌ Out' : (Number(p.qty) < LOW_THRESHOLD ? '⚠️ Low' : '✅ OK');
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td>${escapeHtml(p.name)}</td><td>${escapeHtml(p.category)}</td><td>${escapeHtml(p.size||'-')}</td>
+                    <td>${p.qty}</td><td>${status}</td>
+                    <td>
+                      <button class="btn secondary" onclick="editProduct(${idx})">Edit</button>
+                      <button class="btn" onclick="restock(${idx})">Restock</button>
+                      <button class="btn" style="background:var(--danger)" onclick="deleteProduct(${idx})">Delete</button>
+                    </td>`;
+    body.appendChild(tr);
+  });
+  renderLowStockPanel();
+}
+
+function renderSettings(){
+  const body = $('settingsBody'); if(!body) return; body.innerHTML = '';
+  products.forEach((p, idx) => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td>${escapeHtml(p.name)}</td><td>${escapeHtml(p.category)}</td><td>${escapeHtml(p.size||'-')}</td>
+      <td>${escapeHtml(p.addons||'-')}</td><td>${formatMoney(p.price)}</td><td>${p.qty}</td>
+      <td><button class="btn" onclick="editProduct(${idx})">Edit</button> <button class="btn secondary" onclick="duplicate(${idx})">Duplicate</button></td>`;
+    body.appendChild(tr);
+  });
+}
+
+/* -------------------------
+   Product Modal actions
+   ------------------------- */
+function openProductForm(){
+  editingProductIndex = null;
+  $('productModalTitle').textContent = 'New Product';
+  $('prodName').value = '';
+  $('prodCategory').value = 'food';
+  $('prodSize').value = '16 oz';
+  $('prodAddonsBeverageInput').value = '';
+  $('prodAddonsFoodInput').value = '';
+  $('prodPrice').value = '';
+  $('prodQty').value = '';
+  toggleProdFields();
+  $('productModal').style.display = 'flex';
+}
+function closeProductModal(){ $('productModal').style.display = 'none'; editingProductIndex = null; }
+function toggleProdFields(){
+  const cat = $('prodCategory').value;
+  // Show size row for beverage or non-coffee
+  const isDrink = (cat === 'beverage' || cat === 'noncoffee');
+  $('prodSizeRow').style.display = isDrink ? '' : 'none';
+  $('prodAddonsBeverage').style.display = cat === 'beverage' ? '' : 'none';
+  $('prodAddonsFood').style.display = cat === 'food' ? '' : 'none';
+}
+function saveProduct(){
+  const name = $('prodName').value.trim();
+  const category = $('prodCategory').value;
+  const size = (category === 'beverage' || category === 'noncoffee') ? $('prodSize').value : '';
+  const addons = category === 'beverage' ? $('prodAddonsBeverageInput').value.trim() : $('prodAddonsFoodInput').value.trim();
+  const price = parseFloat($('prodPrice').value) || 0;
+  const qty = parseInt($('prodQty').value) || 0;
+  if(!name){ alert('Please enter product name'); return; }
+  const prod = {name, category, size, addons, price, qty};
+  if(editingProductIndex === null){ products.push(prod); } else { products[editingProductIndex] = prod; }
+  saveAll(); closeProductModal(); renderAll();
+}
+
+/* Edit / delete / duplicate / restock helpers */
+function editProduct(idx){
+  const p = products[idx]; if(!p) return;
+  editingProductIndex = idx;
+  $('productModalTitle').textContent = 'Edit Product';
+  $('prodName').value = p.name;
+  $('prodCategory').value = p.category;
+  $('prodSize').value = p.size || '22 oz';
+  $('prodAddonsBeverageInput').value = p.addons || '';
+  $('prodAddonsFoodInput').value = p.addons || '';
+  $('prodPrice').value = p.price;
+  $('prodQty').value = p.qty;
+  toggleProdFields();
+  $('productModal').style.display = 'flex';
+}
+function deleteProduct(idx){
+  if(confirm('Delete this product?')){ products.splice(idx,1); saveAll(); renderAll(); }
+}
+function duplicate(idx){
+  const p = products[idx]; if(!p) return;
+  products.push({...p, name: p.name + ' (copy)'});
+  saveAll(); renderAll();
+}
+function restock(idx){
+  const qty = prompt('Enter quantity to add:', '10');
+  const n = parseInt(qty);
+  if(!isNaN(n) && n > 0){ products[idx].qty = Number(products[idx].qty || 0) + n; saveAll(); renderAll(); }
+}
+
+/* -------------------------
+   Closeout / Reports
+   ------------------------- */
+function showCloseout(){
+  if(orders.length === 0){ $('closeoutReport').textContent = 'No transactions yet.'; return; }
+  const totalSales = orders.reduce((s,o) => s + Number(o.total), 0);
+  const html = `<div>Total Orders: <strong>${orders.length}</strong></div>
+    <div>Total Sales: <strong>${formatMoney(totalSales)}</strong></div>
+    <hr />
+    <div class="tiny muted">Recent:</div>
+    ${orders.slice().reverse().map(o => `<div>#${o.id} • ${formatMoney(o.total)} • ${new Date(o.date).toLocaleString()}</div>`).join('')}`;
+  $('closeoutReport').innerHTML = html;
+}
+
+/* -------------------------
+   Transaction History rendering
+   ------------------------- */
+function renderHistory(){
+  const body = $('historyBody');
+  if(!body) return;
+  body.innerHTML = '';
+  if(orders.length === 0){ body.innerHTML = '<tr><td colspan="6" class="tiny muted">No transactions yet</td></tr>'; return; }
+  orders.slice().reverse().forEach(o => {
+    const itemsText = o.items.map(it => `${it.name}${it.size ? ' • ' + it.size : ''} x${it.qty}`).join('; ');
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td>#${o.id}</td><td>${new Date(o.date).toLocaleString()}</td><td style="max-width:300px">${escapeHtml(itemsText)}</td><td>${formatMoney(o.total)}</td><td>${escapeHtml(o.payment)}</td>
+      <td><button class="btn secondary" onclick="openReceiptModalById(${o.id})">Receipt</button></td>`;
+    body.appendChild(tr);
+  });
+}
+
+/* -------------------------
+   Daily Sales (today) — summary + full list
+   ------------------------- */
+function isSameLocalDay(isoDateStr){
+  try {
+    const d = new Date(isoDateStr);
+    const now = new Date();
+    return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth() && d.getDate() === now.getDate();
+  } catch(e){ return false; }
+}
+function renderDaily(){
+  const label = $('dailyDateLabel');
+  const today = new Date();
+  const dateLabel = `${today.getFullYear()}-${('0'+(today.getMonth()+1)).slice(-2)}-${('0'+today.getDate()).slice(-2)}`;
+  label.textContent = 'Date: ' + dateLabel;
+
+  const dailyOrders = orders.filter(o => isSameLocalDay(o.date));
+  const body = $('dailyBody'); if(!body) return; body.innerHTML = '';
+  if(dailyOrders.length === 0){ body.innerHTML = '<tr><td colspan="6" class="tiny muted">No transactions for today</td></tr>'; $('dailySummary').innerHTML = '<div class="tiny muted">No sales today.</div>'; return; }
+
+  // summary
+  const totalSales = dailyOrders.reduce((s,o) => s + Number(o.total), 0);
+  const totalOrders = dailyOrders.length;
+  // top products today
+  const tally = {};
+  dailyOrders.forEach(o => o.items.forEach(it => { tally[it.name] = (tally[it.name]||0) + Number(it.qty); }));
+  const top = Object.keys(tally).sort((a,b)=>tally[b]-tally[a])[0] || '—';
+  $('dailySummary').innerHTML = `<div style="display:flex;gap:12px;flex-wrap:wrap">
+    <div class="card"><div class="tiny muted">Total Sales</div><div style="font-weight:800">${formatMoney(totalSales)}</div></div>
+    <div class="card"><div class="tiny muted">Orders</div><div style="font-weight:800">${totalOrders}</div></div>
+    <div class="card"><div class="tiny muted">Top Product</div><div style="font-weight:800">${escapeHtml(top)}</div></div>
+  </div>`;
+
+  dailyOrders.slice().reverse().forEach(o => {
+    const itemsText = o.items.map(it => `${it.name}${it.size ? ' • ' + it.size : ''} x${it.qty}`).join('; ');
+    const tr = document.createElement('tr');
+    const d = new Date(o.date);
+    tr.innerHTML = `<td>#${o.id}</td><td>${d.toLocaleTimeString()}</td><td style="max-width:300px">${escapeHtml(itemsText)}</td><td>${formatMoney(o.total)}</td><td>${escapeHtml(o.payment)}</td>
+      <td><button class="btn secondary" onclick="openReceiptModalById(${o.id})">Receipt</button></td>`;
+    body.appendChild(tr);
+  });
+}
+
+/* Generate PDF for daily sales with summary + full order list */
+function generateDailySalesPDF(){
+  if(!currentUser || currentUser.role !== 'admin'){ alert('Only admins can download daily sales'); return; }
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF();
+  const now = new Date();
+  const dateLabel = `${now.getFullYear()}-${('0'+(now.getMonth()+1)).slice(-2)}-${('0'+now.getDate()).slice(-2)}`;
+  const dailyOrders = orders.filter(o => isSameLocalDay(o.date));
+  const totalSales = dailyOrders.reduce((s,o) => s + Number(o.total), 0);
+  const totalOrders = dailyOrders.length;
+  const tally = {};
+  dailyOrders.forEach(o => o.items.forEach(it => { tally[it.name] = (tally[it.name]||0) + Number(it.qty); }));
+  const top = Object.keys(tally).sort((a,b)=>tally[b]-tally[a])[0] || '—';
+
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(16);
+  doc.text("Kape Timplado — Daily Sales Record", 14, 18);
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(10);
+  doc.text(`Date: ${dateLabel}`, 14, 26);
+  doc.text(`Generated: ${now.toLocaleString()}`, 14, 32);
+  doc.line(14, 34, 196, 34);
+
+  doc.setFont("helvetica", "bold");
+  doc.text("Summary", 14, 42);
+  doc.setFont("helvetica", "normal");
+  doc.text(`Total Sales: ₱${totalSales.toFixed(2)}`, 14, 48);
+  doc.text(`Total Orders: ${totalOrders}`, 14, 54);
+  doc.text(`Top Product: ${top}`, 14, 60);
+
+  doc.setFont("helvetica", "bold");
+  doc.text("Orders (detailed)", 14, 72);
+  doc.setFont("helvetica", "normal");
+
+  let y = 78;
+  if(dailyOrders.length === 0){
+    doc.text("No transactions for today", 14, y);
+  } else {
+    dailyOrders.slice().reverse().forEach(o => {
+      if(y > 270){ doc.addPage(); y = 20; }
+      doc.setFont("helvetica", "bold");
+      doc.text(`#${o.id} • ${new Date(o.date).toLocaleTimeString()}`, 14, y);
+      y += 6;
+      doc.setFont("helvetica", "normal");
+      const itemsText = o.items.map(it => `${it.name} x${it.qty}`).join(', ');
+      const splitItems = doc.splitTextToSize(itemsText, 160);
+      doc.text(splitItems, 16, y);
+      y += splitItems.length * 6;
+      doc.text(`Total: ₱${Number(o.total).toFixed(2)} • Payment: ${o.payment}`, 16, y);
+      y += 10;
+    });
+  }
+
+  doc.save(`Daily_Sales_${dateLabel}.pdf`);
+}
+
+/* -------------------------
+   Receipt Modal & Print
+   ------------------------- */
+function openReceiptModal(order){
+  const meta = document.getElementById('receiptMeta');
+  const itemsEl = document.getElementById('receiptItems');
+  const totalEl = document.getElementById('receiptTotal');
+  const payEl = document.getElementById('receiptPayment');
+
+  meta.innerHTML = `Order #: <strong>${order.id}</strong> • ${new Date(order.date).toLocaleString()}<br>Customer: ${escapeHtml(order.customer||'-')}<br class="tiny" />Notes: ${escapeHtml(order.notes||'-')}`;
+  itemsEl.innerHTML = '';
+  order.items.forEach(it => {
+    const subtotal = Number(it.price) * Number(it.qty);
+    const addonsText = (it.addons && it.addons.length) ? ` (${it.addons.join(', ')})` : '';
+    const div = document.createElement('div');
+    div.className = 'item';
+    div.innerHTML = `<div style="flex:1">${escapeHtml(it.name)}${it.size ? ' • ' + escapeHtml(it.size) : ''}${addonsText} <span style="display:block;font-size:0.8rem;color:#6b6b6b;">x${it.qty}</span></div><div>${formatMoney(subtotal)}</div>`;
+    itemsEl.appendChild(div);
+  });
+  totalEl.textContent = formatMoney(order.total);
+  payEl.textContent = escapeHtml(order.payment);
+  $('receiptModal').style.display = 'flex';
+}
+
+function openReceiptModalById(id){
+  const order = orders.find(o => o.id === id);
+  if(!order){ alert('Order not found'); return; }
+  openReceiptModal(order);
+}
+function closeReceipt(){ $('receiptModal').style.display = 'none'; }
+
+/* Print receipt only (print rules hide other UI) */
+function printReceipt(){
+  setTimeout(() => {
+    window.print();
+  }, 120);
+}
+
+/* -------------------------
+   Navigation & permissions
+   ------------------------- */
+function switchTabFromNav(ev){
+  if(getComputedStyle(ev.currentTarget).display === 'none') return; // hidden nav item
+  document.querySelectorAll('.nav-item').forEach(i=>i.classList.remove('active'));
+  ev.currentTarget.classList.add('active');
+  const id = ev.currentTarget.getAttribute('data-tab');
+
+  // Hide all tab panels
+  document.querySelectorAll('[role="tabpanel"]').forEach(t => t.style.display = 'none');
+
+  // Show the target panel
+  const panel = document.getElementById(id);
+  if(panel) panel.style.display = '';
+
+  // PRODUCTS: show fade-in inner panels; otherwise hide them (fade-out)
+  if(id === 'tabProducts'){
+    showProductsPanel();
+  } else {
+    hideProductsPanel();
+  }
+
+  // Render content of specific tabs when activated
+  if(id === 'tabOrders') renderOrders();
+  if(id === 'tabInventory') renderInventory();
+  if(id === 'tabSettings') renderSettings();
+  if(id === 'tabCloseout') showCloseout();
+  if(id === 'tabDashboard') renderDashboard();
+  if(id === 'tabHistory') renderHistory();
+  if(id === 'tabDaily') renderDaily();
+
+  closeMobileNav();
+}
+
+function activateNav(tabId){
+  document.querySelectorAll('.nav-item').forEach(i=>i.classList.remove('active'));
+  const el = document.querySelector(`.nav-item[data-tab="${tabId}"]`);
+  if(el) el.classList.add('active');
+  document.querySelectorAll('[role="tabpanel"]').forEach(t => t.style.display = 'none');
+  const panel = document.getElementById(tabId);
+  if(panel) panel.style.display = '';
+  if(tabId === 'tabProducts'){
+    showProductsPanel();
+  } else {
+    hideProductsPanel();
+  }
+  if(tabId === 'tabDashboard') renderDashboard();
+  if(tabId === 'tabOrders') renderOrders();
+  if(tabId === 'tabInventory') renderInventory();
+  if(tabId === 'tabSettings') renderSettings();
+  if(tabId === 'tabCloseout') showCloseout();
+  if(tabId === 'tabHistory') renderHistory();
+  if(tabId === 'tabDaily') renderDaily();
+}
+
+/* -------------------------
+   Dashboard rendering & jsPDF PDF
+   ------------------------- */
+function renderDashboard(){
+  if(!currentUser || currentUser.role !== 'admin'){
+    $('dashboardAlert').textContent = 'Access restricted — Admins only.';
+    return;
+  }
+  $('dashboardAlert').textContent = '';
+  const totalSales = orders.reduce((s,o) => s + Number(o.total), 0);
+  $('dashTotalSales').textContent = formatMoney(totalSales);
+  $('dashTotalOrders').textContent = orders.length;
+  const lowCount = products.filter(p => Number(p.qty) < LOW_THRESHOLD).length;
+  $('dashLowCount').textContent = lowCount;
+  // Top product by total sold (based on orders)
+  const tally = {};
+  orders.forEach(o => o.items.forEach(it => { tally[it.name] = (tally[it.name]||0) + Number(it.qty); }));
+  const top = Object.keys(tally).sort((a,b) => tally[b] - tally[a])[0] || '—';
+  $('dashTopProduct').textContent = top;
+
+  // Stock summary list
+  const stockSum = $('stockSummary');
+  if(stockSum) stockSum.innerHTML = products.map(p => `<div style="display:flex;justify-content:space-between;margin-bottom:6px"><div>${escapeHtml(p.name)}</div><div>${p.qty}</div></div>`).join('');
+
+  // Simple sales chart: last up to 10 orders, plot totals (canvas)
+  const canvas = document.getElementById('salesChart');
+  if(!canvas) return;
+  const ctx = canvas.getContext('2d');
+  ctx.clearRect(0,0,ctx.canvas.width,ctx.canvas.height);
+  const recent = orders.slice(-10);
+  if(recent.length === 0){
+    ctx.fillStyle = '#777';
+    ctx.font = '14px sans-serif';
+    ctx.fillText('No sales data yet', 20, 40);
+    return;
+  }
+  const labels = recent.map(o => new Date(o.date).toLocaleTimeString());
+  const data = recent.map(o => Number(o.total));
+  const padding = 20;
+  const cw = ctx.canvas.width;
+  const ch = ctx.canvas.height;
+  const chartW = cw - padding*2;
+  const chartH = ch - padding*2;
+  const max = Math.max(...data) || 1;
+  const barW = chartW / data.length * 0.7;
+  const gap = (chartW / data.length) * 0.3;
+  ctx.strokeStyle = 'rgba(0,0,0,0.06)';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  for(let i=0;i<=4;i++){
+    const y = padding + (chartH / 4) * i;
+    ctx.moveTo(padding, y);
+    ctx.lineTo(padding + chartW, y);
+  }
+  ctx.stroke();
+  data.forEach((v,i) => {
+    const x = padding + i*(barW + gap) + gap/2;
+    const h = (v / max) * (chartH - 10);
+    const y = padding + chartH - h;
+    ctx.fillStyle = '#6d4b3e';
+    ctx.fillRect(x, y, barW, h);
+    ctx.fillStyle = '#444';
+    ctx.font = '11px sans-serif';
+    ctx.fillText('₱' + v.toFixed(0), x, y - 6);
+    ctx.save();
+    ctx.translate(x + barW/2, padding + chartH + 14);
+    ctx.rotate(-0.6);
+    ctx.fillText(labels[i], 0, 0);
+    ctx.restore();
+  });
+}
+
+/* Generate a client-side PDF using jsPDF (downloads file) */
+function generateDashboardPDF(){
+  if(!currentUser || currentUser.role !== 'admin'){ alert('Only admins can generate dashboard PDF'); return; }
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF();
+
+  const date = new Date().toLocaleString();
+  const totalSales = orders.reduce((s,o) => s + Number(o.total), 0);
+  const totalOrders = orders.length;
+  const lowCount = products.filter(p => Number(p.qty) < LOW_THRESHOLD).length;
+  const topProduct = (() => {
+    const tally = {};
+    orders.forEach(o => o.items.forEach(it => {
+      tally[it.name] = (tally[it.name]||0) + Number(it.qty);
+    }));
+    return Object.keys(tally).sort((a,b)=>tally[b]-tally[a])[0] || '—';
+  })();
+
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(16);
+  doc.text("Kape Timplado Café", 14, 18);
+  doc.setFontSize(10);
+  doc.setFont("helvetica", "normal");
+  doc.text("Dashboard Analytics Report", 14, 24);
+  doc.text(`Generated: ${date}`, 14, 30);
+  doc.line(14, 32, 196, 32);
+
+  doc.setFont("helvetica", "bold");
+  doc.text("Summary", 14, 40);
+  doc.setFont("helvetica", "normal");
+  doc.text(`Total Sales: ₱${totalSales.toFixed(2)}`, 14, 46);
+  doc.text(`Total Orders: ${totalOrders}`, 14, 52);
+  doc.text(`Low/Out of Stock: ${lowCount}`, 14, 58);
+  doc.text(`Top Product: ${topProduct}`, 14, 64);
+
+  doc.setFont("helvetica", "bold");
+  doc.text("Recent Orders", 14, 78);
+  doc.setFont("helvetica", "normal");
+  let y = 84;
+  const headers = ["Order ID", "Date", "Total", "Payment"];
+  doc.setFontSize(10);
+  doc.text(headers[0], 14, y);
+  doc.text(headers[1], 44, y);
+  doc.text(headers[2], 120, y);
+  doc.text(headers[3], 160, y);
+  doc.line(14, y + 1, 196, y + 1);
+  y += 6;
+  orders.slice(-10).reverse().forEach(o => {
+    if (y > 270) { doc.addPage(); y = 20; }
+    doc.text(String(o.id), 14, y);
+    doc.text(new Date(o.date).toLocaleString(), 44, y);
+    doc.text(`₱${Number(o.total).toFixed(2)}`, 120, y);
+    doc.text(o.payment, 160, y);
+    y += 6;
+  });
+
+  y += 8;
+  if (y > 260) { doc.addPage(); y = 20; }
+  doc.setFont("helvetica", "bold");
+  doc.text("Stock Summary", 14, y);
+  y += 6;
+  doc.setFont("helvetica", "normal");
+  products.forEach(p => {
+    if (y > 270) { doc.addPage(); y = 20; }
+    doc.text(`${p.name} — Qty: ${p.qty}`, 14, y);
+    y += 6;
+  });
+
+  y += 8;
+  if (y > 270) { doc.addPage(); y = 20; }
+  doc.setFontSize(9);
+  doc.setTextColor(120);
+  doc.text("Generated automatically by Kape Timplado POS Dashboard", 14, y);
+
+  doc.save("Kape_Timplado_Report.pdf");
+}
+
+/* Generate PDF for transactions history (all orders) */
+function generateTransactionsPDF(){
+  if(!currentUser || currentUser.role !== 'admin'){ alert('Only admins can download transactions'); return; }
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF();
+  const date = new Date().toLocaleString();
+
+  doc.setFont("helvetica", "bold"); doc.setFontSize(16);
+  doc.text("Kape Timplado — Transactions", 14, 18);
+  doc.setFontSize(10); doc.setFont("helvetica", "normal");
+  doc.text(`Generated: ${date}`, 14, 24);
+  doc.line(14, 26, 196, 26);
+
+  let y = 34;
+  doc.setFont("helvetica", "bold");
+  doc.text("Order ID", 14, y);
+  doc.text("Date", 40, y);
+  doc.text("Items", 84, y);
+  doc.text("Total", 150, y);
+  doc.text("Payment", 172, y);
+  y += 6;
+  doc.setFont("helvetica", "normal");
+
+  orders.slice().reverse().forEach(o => {
+    if(y > 270){ doc.addPage(); y = 20; }
+    const itemsText = o.items.map(it => `${it.name} x${it.qty}`).join(', ');
+    doc.text(String(o.id), 14, y);
+    doc.text(new Date(o.date).toLocaleString(), 40, y);
+    const splitItems = doc.splitTextToSize(itemsText, 60);
+    doc.text(splitItems, 84, y);
+    doc.text(`₱${Number(o.total).toFixed(2)}`, 150, y);
+    doc.text(o.payment, 172, y);
+    const lines = splitItems.length;
+    y += lines * 6;
+    y += 4;
+  });
+
+  doc.save("Kape_Timplado_Transactions.pdf");
+}
+
+/* -------------------------
+   Render all (convenience)
+   ------------------------- */
+function renderAll(){
+  renderProducts();
+  renderCart();
+  renderOrders();
+  renderInventory();
+  renderSettings();
+  renderNotifications();
+  renderLowStockPanel();
+  showCloseout();
+  renderHistory();
+}
+
+/* -------------------------
+   Initialization on load
+   ------------------------- */
+(function init(){
+  // Apply saved sidebar width/state
+  const storedWidth = parseInt(localStorage.getItem('kt_sidebar_width') || 320);
+  setProductsSidebarWidth(storedWidth);
+  applySavedSidebarState();
+
+  // Start with products inner hidden (so layout unchanged)
+  hideProductsPanel();
+
+  renderAll();
+  // Hide modals initially
+  document.querySelectorAll('.modal-backdrop').forEach(m => m.style.display = 'none');
+  // Clicking outside panels hides them
+  document.addEventListener('click', function(e){
+    if(!e.target.closest('#notifBtn') && !e.target.closest('#notifPanel')){ if($('notifPanel')) $('notifPanel').style.display = 'none'; }
+    if(!e.target.closest('#lowBtn') && !e.target.closest('#lowPanel')){ if($('lowPanel')) $('lowPanel').style.display = 'none'; }
+  });
+  // Default nav
+  activateNav('tabDashboard');
+
+  // Responsive nav toggle visibility
+  const mt = document.getElementById('mobileNavToggle');
+  function responsiveToggle(){ if(window.innerWidth <= 1200){ mt.style.display = 'inline-block'; } else { mt.style.display = 'none'; closeMobileNav(); } }
+  responsiveToggle();
+  window.addEventListener('resize', responsiveToggle);
+
+  // double click toggle to set wide 420 or 320 for sidebar
+  const tbtn = $('toggleSidebarBtn');
+  if(tbtn){
+    tbtn.ondblclick = function(){
+      const current = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--sidebar-width'));
+      const neww = current < 400 ? 420 : 320;
+      setProductsSidebarWidth(neww);
+      document.documentElement.style.setProperty('--sidebar-width', neww + 'px');
+      $('productsSidebar').classList.remove('collapsed');
+      localStorage.setItem('kt_sidebar_expanded','true');
+      $('sidebarStateHint').textContent = '(expanded)';
+    };
+  }
+})();
+</script>
+
+</body>
+</html>
