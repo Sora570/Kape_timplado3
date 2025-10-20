@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login Button Test</title>
+    <style>
+        body { 
+            font-family: Arial, sans-serif; 
+            margin: 20px; 
+            background: #f8e7d6;
+        }
+        .test-container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+        }
+        .test-section {
+            margin: 20px 0;
+            padding: 20px;
+            border: 2px solid #f8e7d6;
+            border-radius: 10px;
+        }
+        .success { color: #388e3c; }
+        .error { color: #d32f2f; }
+        .warning { color: #f57c00; }
+        button { 
+            background: #7f5539; 
+            color: white; 
+            padding: 12px 24px; 
+            border: none; 
+            border-radius: 8px; 
+            cursor: pointer; 
+            margin: 5px;
+        }
+        button:hover { background: #6d4329; }
+        input { 
+            padding: 10px; 
+            margin: 5px; 
+            width: 200px; 
+            border: 2px solid #f8e7d6;
+            border-radius: 8px;
+        }
+        .debug-info {
+            background: #f5f5f5;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 10px 0;
+            font-family: monospace;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <div class="test-container">
+        <h1>🔧 Login Button Test</h1>
+        
+        <div class="test-section">
+            <h2>1. Test Admin Login API</h2>
+            <input type="text" id="adminUsername" placeholder="Admin Username" value="admin">
+            <input type="password" id="adminPassword" placeholder="Admin Password" value="password">
+            <button onclick="testAdminLogin()">Test Admin Login</button>
+            <div id="adminResult"></div>
+        </div>
+        
+        <div class="test-section">
+            <h2>2. Test Cashier PIN Login API</h2>
+            <input type="text" id="cashierId" placeholder="Employee ID" value="EMP001">
+            <input type="password" id="cashierPin" placeholder="PIN" value="password">
+            <button onclick="testCashierLogin()">Test Cashier Login</button>
+            <div id="cashierResult"></div>
+            <p><small>Available cashiers: EMP001 (john_doe), EMP002 (jane_cashier)</small></p>
+        </div>
+        
+        <div class="test-section">
+            <h2>3. Test Database Users</h2>
+            <button onclick="testDatabaseUsers()">Check Database Users</button>
+            <div id="dbResult"></div>
+        </div>
+        
+        <div class="test-section">
+            <h2>4. Debug JavaScript</h2>
+            <button onclick="debugJavaScript()">Debug JavaScript Loading</button>
+            <div id="jsResult"></div>
+        </div>
+        
+        <div class="test-section">
+            <h2>5. Quick Access</h2>
+            <button onclick="window.open('loginRegister.html', '_blank')">Open Login Page</button>
+            <button onclick="window.open('admin_test.html', '_blank')">Open Admin Test</button>
+        </div>
+    </div>
+
+    <script>
+        async function testAdminLogin() {
+            const username = document.getElementById('adminUsername').value;
+            const password = document.getElementById('adminPassword').value;
+            const resultDiv = document.getElementById('adminResult');
+            
+            resultDiv.innerHTML = '<p>Testing admin login...</p>';
+            
+            try {
+                const formData = new FormData();
+                formData.append('username', username);
+                formData.append('password', password);
+                
+                console.log('Sending admin login request:', { username });
+                
+                const response = await fetch('db/login.php', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                console.log('Admin login response status:', response.status);
+                
+                const result = await response.json();
+                console.log('Admin login result:', result);
+                
+                if (result.status === 'success') {
+                    resultDiv.innerHTML = `<p class="success">✅ Admin login successful! Role: ${result.role}</p>`;
+                    resultDiv.innerHTML += `<p><a href="index.php" style="color: #7f5539;">→ Go to Dashboard</a></p>`;
+                } else {
+                    resultDiv.innerHTML = `<p class="error">❌ Admin login failed: ${result.message}</p>`;
+                }
+            } catch (error) {
+                console.error('Admin login error:', error);
+                resultDiv.innerHTML = `<p class="error">❌ Error: ${error.message}</p>`;
+            }
+        }
+        
+        async function testCashierLogin() {
+            const employeeId = document.getElementById('cashierId').value;
+            const pin = document.getElementById('cashierPin').value;
+            const resultDiv = document.getElementById('cashierResult');
+            
+            resultDiv.innerHTML = '<p>Testing cashier login...</p>';
+            
+            try {
+                const formData = new FormData();
+                formData.append('employeeId', employeeId);
+                formData.append('pin', pin);
+                formData.append('userType', 'employee');
+                
+                console.log('Sending cashier login request:', { employeeId, pin });
+                
+                const response = await fetch('db/pin_login_simple.php', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                console.log('Cashier login response status:', response.status);
+                
+                const result = await response.json();
+                console.log('Cashier login result:', result);
+                
+                if (result.status === 'success') {
+                    resultDiv.innerHTML = `<p class="success">✅ Cashier login successful! Role: ${result.role}</p>`;
+                    resultDiv.innerHTML += `<p><a href="cashier.html" style="color: #7f5539;">→ Go to Cashier Dashboard</a></p>`;
+                } else {
+                    resultDiv.innerHTML = `<p class="error">❌ Cashier login failed: ${result.message}</p>`;
+                }
+            } catch (error) {
+                console.error('Cashier login error:', error);
+                resultDiv.innerHTML = `<p class="error">❌ Error: ${error.message}</p>`;
+            }
+        }
+        
+        async function testDatabaseUsers() {
+            const resultDiv = document.getElementById('dbResult');
+            resultDiv.innerHTML = '<p>Checking database users...</p>';
+            
+            try {
+                const response = await fetch('db/users_test.php');
+                const result = await response.json();
+                
+                if (result.success) {
+                    resultDiv.innerHTML = '<p class="success">✅ Database connection successful</p>';
+                    resultDiv.innerHTML += '<p><strong>Users found:</strong></p>';
+                    resultDiv.innerHTML += '<ul>';
+                    result.users.forEach(user => {
+                        resultDiv.innerHTML += `<li>${user.username} (${user.role})</li>`;
+                    });
+                    resultDiv.innerHTML += '</ul>';
+                } else {
+                    resultDiv.innerHTML = `<p class="error">❌ Database error: ${result.message}</p>`;
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `<p class="error">❌ Error: ${error.message}</p>`;
+            }
+        }
+        
+        function debugJavaScript() {
+            const resultDiv = document.getElementById('jsResult');
+            
+            // Test if elements exist
+            const employeeTab = document.getElementById('employee-tab');
+            const adminTab = document.getElementById('admin-tab');
+            const employeeBtn = document.getElementById('employee-login-btn');
+            const adminBtn = document.getElementById('log');
+            
+            let debugInfo = '<div class="debug-info">';
+            debugInfo += 'JavaScript Debug Info:<br>';
+            debugInfo += `Employee tab found: ${employeeTab ? 'YES' : 'NO'}<br>`;
+            debugInfo += `Admin tab found: ${adminTab ? 'YES' : 'NO'}<br>`;
+            debugInfo += `Employee login button found: ${employeeBtn ? 'YES' : 'NO'}<br>`;
+            debugInfo += `Admin login button found: ${adminBtn ? 'YES' : 'NO'}<br>`;
+            debugInfo += `DOM ready: ${document.readyState}<br>`;
+            debugInfo += '</div>';
+            
+            resultDiv.innerHTML = debugInfo;
+        }
+        
+        // Run debug on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('Test page loaded');
+            setTimeout(debugJavaScript, 100);
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin System Test</title>
+    <style>
+        body { 
+            font-family: 'Fredoka', sans-serif; 
+            margin: 20px; 
+            background: #f8e7d6;
+        }
+        .test-container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+        }
+        .test-section {
+            margin: 20px 0;
+            padding: 20px;
+            border: 2px solid #f8e7d6;
+            border-radius: 10px;
+        }
+        .success { color: #388e3c; }
+        .error { color: #d32f2f; }
+        .warning { color: #f57c00; }
+        button { 
+            background: #7f5539; 
+            color: white; 
+            padding: 12px 24px; 
+            border: none; 
+            border-radius: 8px; 
+            cursor: pointer; 
+            font-family: 'Fredoka', sans-serif;
+            margin: 5px;
+        }
+        button:hover { background: #6d4329; }
+        input { 
+            padding: 10px; 
+            margin: 5px; 
+            width: 200px; 
+            border: 2px solid #f8e7d6;
+            border-radius: 8px;
+            font-family: 'Fredoka', sans-serif;
+        }
+        .font-test {
+            font-size: 24px;
+            font-weight: 500;
+            color: #7f5539;
+            margin: 20px 0;
+        }
+    </style>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@300;400;500;600;700&display=swap">
+</head>
+<body>
+    <div class="test-container">
+        <h1>🔧 KAPE Admin System Test</h1>
+        
+        <div class="font-test">
+            This text should be in Fredoka font. If you see this in a different font, there's a font loading issue.
+        </div>
+        
+        <div class="test-section">
+            <h2>1. Admin Login Test</h2>
+            <input type="text" id="username" placeholder="Username" value="admin">
+            <input type="password" id="password" placeholder="Password" value="password">
+            <button onclick="testAdminLogin()">Test Admin Login</button>
+            <div id="loginResult"></div>
+        </div>
+        
+        <div class="test-section">
+            <h2>2. System Access Test</h2>
+            <button onclick="testSystemAccess()">Test System Access</button>
+            <div id="systemResult"></div>
+        </div>
+        
+        <div class="test-section">
+            <h2>3. Quick Navigation</h2>
+            <button onclick="window.open('loginRegister.html', '_blank')">Open Login Page</button>
+            <button onclick="window.open('debug_system.php', '_blank')">Open Debug System</button>
+            <button onclick="window.open('test_login_flow.html', '_blank')">Open Login Flow Test</button>
+        </div>
+        
+        <div class="test-section">
+            <h2>4. Font Test</h2>
+            <div style="font-size: 16px; font-weight: 300;">Fredoka Light (300)</div>
+            <div style="font-size: 16px; font-weight: 400;">Fredoka Regular (400)</div>
+            <div style="font-size: 16px; font-weight: 500;">Fredoka Medium (500)</div>
+            <div style="font-size: 16px; font-weight: 600;">Fredoka SemiBold (600)</div>
+            <div style="font-size: 16px; font-weight: 700;">Fredoka Bold (700)</div>
+        </div>
+    </div>
+
+    <script>
+        async function testAdminLogin() {
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+            const resultDiv = document.getElementById('loginResult');
+            
+            resultDiv.innerHTML = '<p>Testing admin login...</p>';
+            
+            try {
+                const formData = new FormData();
+                formData.append('username', username);
+                formData.append('password', password);
+                
+                const response = await fetch('db/login.php', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const result = await response.json();
+                
+                if (result.status === 'success') {
+                    resultDiv.innerHTML = `<p class="success">✅ Login successful! Role: ${result.role}</p>`;
+                    
+                    // Try to access the dashboard
+                    setTimeout(async () => {
+                        try {
+                            const dashboardResponse = await fetch('index.php');
+                            if (dashboardResponse.ok) {
+                                resultDiv.innerHTML += `<p class="success">✅ Dashboard accessible</p>`;
+                                resultDiv.innerHTML += `<p><a href="index.php" style="color: #7f5539; text-decoration: none; font-weight: 600;">→ Go to Admin Dashboard</a></p>`;
+                            } else {
+                                resultDiv.innerHTML += `<p class="error">❌ Dashboard not accessible (${dashboardResponse.status})</p>`;
+                            }
+                        } catch (error) {
+                            resultDiv.innerHTML += `<p class="error">❌ Dashboard access error: ${error.message}</p>`;
+                        }
+                    }, 1000);
+                    
+                } else {
+                    resultDiv.innerHTML = `<p class="error">❌ Login failed: ${result.message}</p>`;
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `<p class="error">❌ Error: ${error.message}</p>`;
+            }
+        }
+        
+        async function testSystemAccess() {
+            const resultDiv = document.getElementById('systemResult');
+            resultDiv.innerHTML = '<p>Testing system components...</p>';
+            
+            const tests = [
+                { name: 'Database Connection', url: 'test_db_connection.php' },
+                { name: 'Login System', url: 'db/login.php' },
+                { name: 'CSS Files', url: 'css/Dashboard.css' }
+            ];
+            
+            let results = [];
+            
+            for (const test of tests) {
+                try {
+                    const response = await fetch(test.url);
+                    if (response.ok) {
+                        results.push(`✅ ${test.name}`);
+                    } else {
+                        results.push(`❌ ${test.name} (${response.status})`);
+                    }
+                } catch (error) {
+                    results.push(`❌ ${test.name} (${error.message})`);
+                }
+            }
+            
+            resultDiv.innerHTML = results.map(result => `<p>${result}</p>`).join('');
+        }
+        
+        // Test font loading on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            const testElement = document.createElement('div');
+            testElement.style.fontFamily = 'Fredoka, sans-serif';
+            testElement.style.position = 'absolute';
+            testElement.style.left = '-9999px';
+            testElement.textContent = 'Font Test';
+            document.body.appendChild(testElement);
+            
+            const computedStyle = window.getComputedStyle(testElement);
+            const fontFamily = computedStyle.fontFamily;
+            
+            document.body.removeChild(testElement);
+            
+            if (fontFamily.includes('Fredoka')) {
+                console.log('✅ Fredoka font loaded successfully');
+            } else {
+                console.log('❌ Fredoka font not loaded properly');
+            }
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Full Login Flow Test</title>
+    <style>
+        body { 
+            font-family: Arial, sans-serif; 
+            margin: 20px; 
+            background: #f8e7d6;
+        }
+        .test-container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+        }
+        .test-section {
+            margin: 20px 0;
+            padding: 20px;
+            border: 2px solid #f8e7d6;
+            border-radius: 10px;
+        }
+        .success { color: #388e3c; }
+        .error { color: #d32f2f; }
+        .warning { color: #f57c00; }
+        button { 
+            background: #7f5539; 
+            color: white; 
+            padding: 12px 24px; 
+            border: none; 
+            border-radius: 8px; 
+            cursor: pointer; 
+            margin: 5px;
+        }
+        button:hover { background: #6d4329; }
+        input { 
+            padding: 10px; 
+            margin: 5px; 
+            width: 200px; 
+            border: 2px solid #f8e7d6;
+            border-radius: 8px;
+        }
+        .step {
+            margin: 10px 0;
+            padding: 10px;
+            background: #f9f9f9;
+            border-radius: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="test-container">
+        <h1>🔧 Full Login Flow Test</h1>
+        
+        <div class="test-section">
+            <h2>Step 1: Test Admin Login</h2>
+            <input type="text" id="adminUsername" placeholder="Username" value="admin">
+            <input type="password" id="adminPassword" placeholder="Password" value="password">
+            <button onclick="testAdminLoginFlow()">Test Admin Login Flow</button>
+            <div id="adminFlowResult"></div>
+        </div>
+        
+        <div class="test-section">
+            <h2>Step 2: Test Cashier Login</h2>
+            <input type="text" id="cashierId" placeholder="Employee ID" value="EMP001">
+            <input type="password" id="cashierPin" placeholder="PIN" value="password">
+            <button onclick="testCashierLoginFlow()">Test Cashier Login Flow</button>
+            <div id="cashierFlowResult"></div>
+        </div>
+        
+        <div class="test-section">
+            <h2>Step 3: Test Dashboard Access</h2>
+            <button onclick="testDashboardAccess()">Test Dashboard Access</button>
+            <div id="dashboardResult"></div>
+        </div>
+        
+        <div class="test-section">
+            <h2>Quick Navigation</h2>
+            <button onclick="window.open('loginRegister.html', '_blank')">Open Login Page</button>
+            <button onclick="window.open('debug_index.php', '_blank')">Debug Index.php</button>
+            <button onclick="window.open('test_login_endpoints.php', '_blank')">Test Login Endpoints</button>
+        </div>
+    </div>
+
+    <script>
+        async function testAdminLoginFlow() {
+            const username = document.getElementById('adminUsername').value;
+            const password = document.getElementById('adminPassword').value;
+            const resultDiv = document.getElementById('adminFlowResult');
+            
+            resultDiv.innerHTML = '<div class="step">Step 1: Testing admin login...</div>';
+            
+            try {
+                // Step 1: Login
+                const formData = new FormData();
+                formData.append('username', username);
+                formData.append('password', password);
+                
+                const loginResponse = await fetch('db/login.php', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const loginResult = await loginResponse.json();
+                
+                if (loginResult.status === 'success') {
+                    resultDiv.innerHTML += '<div class="step success">✅ Step 1: Admin login successful</div>';
+                    resultDiv.innerHTML += '<div class="step">Step 2: Testing dashboard access...</div>';
+                    
+                    // Step 2: Test dashboard access
+                    setTimeout(async () => {
+                        try {
+                            const dashboardResponse = await fetch('index.php');
+                            if (dashboardResponse.ok) {
+                                resultDiv.innerHTML += '<div class="step success">✅ Step 2: Dashboard accessible</div>';
+                                resultDiv.innerHTML += '<div class="step"><a href="index.php" style="color: #7f5539;">→ Go to Admin Dashboard</a></div>';
+                            } else {
+                                resultDiv.innerHTML += '<div class="step error">❌ Step 2: Dashboard not accessible (' + dashboardResponse.status + ')</div>';
+                            }
+                        } catch (error) {
+                            resultDiv.innerHTML += '<div class="step error">❌ Step 2: Dashboard access error: ' + error.message + '</div>';
+                        }
+                    }, 1000);
+                    
+                } else {
+                    resultDiv.innerHTML += '<div class="step error">❌ Step 1: Login failed: ' + loginResult.message + '</div>';
+                }
+            } catch (error) {
+                resultDiv.innerHTML += '<div class="step error">❌ Error: ' + error.message + '</div>';
+            }
+        }
+        
+        async function testCashierLoginFlow() {
+            const employeeId = document.getElementById('cashierId').value;
+            const pin = document.getElementById('cashierPin').value;
+            const resultDiv = document.getElementById('cashierFlowResult');
+            
+            resultDiv.innerHTML = '<div class="step">Step 1: Testing cashier login...</div>';
+            
+            try {
+                // Step 1: Login
+                const formData = new FormData();
+                formData.append('employeeId', employeeId);
+                formData.append('pin', pin);
+                formData.append('userType', 'employee');
+                
+                const loginResponse = await fetch('db/pin_login_simple.php', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const loginResult = await loginResponse.json();
+                
+                if (loginResult.status === 'success') {
+                    resultDiv.innerHTML += '<div class="step success">✅ Step 1: Cashier login successful</div>';
+                    resultDiv.innerHTML += '<div class="step">Step 2: Testing cashier dashboard access...</div>';
+                    
+                    // Step 2: Test dashboard access
+                    setTimeout(async () => {
+                        try {
+                            const dashboardResponse = await fetch('cashier.html');
+                            if (dashboardResponse.ok) {
+                                resultDiv.innerHTML += '<div class="step success">✅ Step 2: Cashier dashboard accessible</div>';
+                                resultDiv.innerHTML += '<div class="step"><a href="cashier.html" style="color: #7f5539;">→ Go to Cashier Dashboard</a></div>';
+                            } else {
+                                resultDiv.innerHTML += '<div class="step error">❌ Step 2: Cashier dashboard not accessible (' + dashboardResponse.status + ')</div>';
+                            }
+                        } catch (error) {
+                            resultDiv.innerHTML += '<div class="step error">❌ Step 2: Cashier dashboard access error: ' + error.message + '</div>';
+                        }
+                    }, 1000);
+                    
+                } else {
+                    resultDiv.innerHTML += '<div class="step error">❌ Step 1: Login failed: ' + loginResult.message + '</div>';
+                }
+            } catch (error) {
+                resultDiv.innerHTML += '<div class="step error">❌ Error: ' + error.message + '</div>';
+            }
+        }
+        
+        async function testDashboardAccess() {
+            const resultDiv = document.getElementById('dashboardResult');
+            
+            resultDiv.innerHTML = '<div class="step">Testing dashboard access without login...</div>';
+            
+            try {
+                const adminResponse = await fetch('index.php');
+                const cashierResponse = await fetch('cashier.html');
+                
+                resultDiv.innerHTML += '<div class="step">Admin dashboard response: ' + adminResponse.status + '</div>';
+                resultDiv.innerHTML += '<div class="step">Cashier dashboard response: ' + cashierResponse.status + '</div>';
+                
+                if (adminResponse.status === 200) {
+                    resultDiv.innerHTML += '<div class="step success">✅ Admin dashboard accessible</div>';
+                } else {
+                    resultDiv.innerHTML += '<div class="step warning">⚠️ Admin dashboard returned status: ' + adminResponse.status + '</div>';
+                }
+                
+                if (cashierResponse.status === 200) {
+                    resultDiv.innerHTML += '<div class="step success">✅ Cashier dashboard accessible</div>';
+                } else {
+                    resultDiv.innerHTML += '<div class="step warning">⚠️ Cashier dashboard returned status: ' + cashierResponse.status + '</div>';
+                }
+                
+            } catch (error) {
+                resultDiv.innerHTML += '<div class="step error">❌ Error testing dashboard access: ' + error.message + '</div>';
+            }
+        }
+    </script>
+</body>
+</html>

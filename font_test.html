@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Font Test</title>
+    <link rel="stylesheet" href="css/Dashboard.css">
+    <style>
+        .font-test {
+            font-family: 'Fredoka', sans-serif;
+            font-size: 24px;
+            font-weight: 500;
+            color: #7f5539;
+            margin: 20px;
+            padding: 20px;
+            border: 2px solid #7f5539;
+            border-radius: 8px;
+        }
+        .font-fallback {
+            font-family: Arial, sans-serif;
+            font-size: 24px;
+            font-weight: 500;
+            color: #dc3545;
+            margin: 20px;
+            padding: 20px;
+            border: 2px solid #dc3545;
+            border-radius: 8px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Font Test Page</h1>
+    
+    <div class="font-test">
+        This text should be in Fredoka font (rounded, friendly look)
+    </div>
+    
+    <div class="font-fallback">
+        This text should be in Arial font (standard, sharp look)
+    </div>
+    
+    <div style="margin: 20px; padding: 20px; background: #f8f9fa; border-radius: 8px;">
+        <h3>Font Loading Test</h3>
+        <p>If you see a difference between the two boxes above, Fredoka font is loading correctly.</p>
+        <p>If both boxes look the same, there might be a font loading issue.</p>
+    </div>
+</body>
+</html>
