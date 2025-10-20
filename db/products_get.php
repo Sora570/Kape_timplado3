@@ -4,13 +4,25 @@ require_once 'db_connect.php';
 header('Content-Type: application/json');
 
 $sql = 'SELECT
-p.productID, p.productName, p.categoryID,
-s.sizeID, s.sizeName, COALESCE(pp.price, s.defaultPrice) AS price
+    p.productID,
+    p.productName,
+    p.categoryID,
+    s.sizeID,
+    s.sizeName,
+    CASE
+        WHEN s.sizeName REGEXP \'^[0-9]+(\\.[0-9]+)?$\' THEN CONCAT(TRIM(s.sizeName), \'oz\')
+        ELSE TRIM(s.sizeName)
+    END AS sizeLabel,
+    COALESCE(pp.price, s.defaultPrice) AS price
 FROM products p
-LEFT JOIN product_prices pp ON p.productID = pp.productID
+LEFT JOIN (
+    SELECT productID, sizeID, MAX(price) AS price
+    FROM product_prices
+    GROUP BY productID, sizeID
+) pp ON p.productID = pp.productID
 LEFT JOIN sizes s ON pp.sizeID = s.sizeID
 WHERE p.isActive = 1
-ORDER BY p.productID, s.sizeID, pp.unit_id';
+ORDER BY p.productID, s.sizeID';
 
 $stmt = $conn->prepare($sql);
 if (!$stmt) {
@@ -39,13 +51,11 @@ while ($row = $res->fetch_assoc()) {
 
     if ($row['sizeID'] !== null && $row['sizeName'] !== null && $row['price'] !== null) {
         $sizeID = (int)$row['sizeID'];
-        if (!isset($products[$id]['sizes_map'][$sizeID])) {
-            $products[$id]['sizes_map'][$sizeID] = [
-                'sizeID' => $sizeID,
-                'size_label' => $row['sizeName'],
-                'price' => floatval($row['price'])
-            ];
-        }
+        $products[$id]['sizes_map'][$sizeID] = [
+            'sizeID' => $sizeID,
+            'size_label' => $row['sizeLabel'] ?? $row['sizeName'],
+            'price' => floatval($row['price'])
+        ];
     }
 }
 

@@ -36,13 +36,36 @@ if ($res) {
         $sres = $sstmt->get_result();
 
         $sizes = [];
+        $sizesMap = [];
         while ($s = $sres->fetch_assoc()) {
-            $sizes[] = $s;
+            if (!$s['sizeID'] || !$s['sizeName']) {
+                continue;
+            }
+            $sizeName = trim($s['sizeName']);
+            if ($sizeName === '') {
+                continue;
+            }
+            $key = strtolower($sizeName);
+            $price = isset($s['price']) ? floatval($s['price']) : 0.0;
+            if (!isset($sizesMap[$key]) || $price > $sizesMap[$key]['price']) {
+                $sizesMap[$key] = [
+                    'sizeID' => (int)$s['sizeID'],
+                    'sizeName' => $sizeName,
+                    'price' => $price,
+                    'unit_id' => isset($s['unit_id']) ? (int)$s['unit_id'] : null,
+                    'unit_name' => $s['unit_name'] ?? null,
+                    'unit_symbol' => $s['unit_symbol'] ?? null
+                ];
+            }
+        }
+        if (!empty($sizesMap)) {
+            uasort($sizesMap, function ($a, $b) {
+                return strcmp($a['sizeName'], $b['sizeName']);
+            });
+            $sizes = array_values($sizesMap);
         }
         $row['sizes'] = $sizes;
-
         $out[] = $row;
     }
 }
-
 echo json_encode($out, JSON_UNESCAPED_UNICODE | JSON_NUMERIC_CHECK);
