@@ -296,9 +296,6 @@
             <ion-icon name="cart-outline"></ion-icon>
             Cart <span id="cartBadge" class="badge">0</span>
           </button>
-          <div style="display:flex;gap:8px;align-items:center">
-            <button class="pill small" id="toggleMock">Use Mock Data</button>
-          </div>
         </div>
       </div>
 
@@ -416,7 +413,7 @@
       let categories = [];
       let cart = [];
       let orders = [];
-      let useMock = true;
+      let useMock = false;
 
       // DOM refs
       const productsGrid = document.getElementById('productsGrid');
@@ -429,7 +426,6 @@
       const totalEl = document.getElementById('total');
       const checkoutBtn = document.getElementById('checkoutBtn');
       const clearCartBtn = document.getElementById('clearCartBtn');
-      const toggleMockBtn = document.getElementById('toggleMock');
       const cartBtn = document.getElementById('cartBtn');
       const cartBadge = document.getElementById('cartBadge');
 
@@ -462,7 +458,6 @@
           } catch (err) {
             console.warn('Backend products fetch failed, switching to mock', err);
             useMock = true;
-            toggleMockBtn.textContent = 'Use Mock Data';
           }
         }
 
@@ -757,12 +752,6 @@
       categoryFilter.addEventListener('change', applyFilters);
       clearCartBtn.addEventListener('click', ()=> { if (confirm('Clear cart?')) clearCart(); });
       checkoutBtn.addEventListener('click', openCheckout);
-      toggleMockBtn.addEventListener('click', ()=> {
-        useMock = !useMock;
-        toggleMockBtn.textContent = useMock ? 'Use Mock Data' : 'Use Backend';
-        fetchProducts();
-      });
-
       // Cart button
       cartBtn.addEventListener('click', () => {
         showSection('ProductsForm');
@@ -812,8 +801,7 @@
 
       // Init
       (function init(){
-        // default use mock (for quick testing)
-        toggleMockBtn.textContent = useMock ? 'Use Mock Data' : 'Use Backend';
+        // try backend first, fallback to mock data if unavailable
         fetchProducts();
         renderCart();
         renderOrders();
